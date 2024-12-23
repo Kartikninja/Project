@@ -39,7 +39,7 @@ export class App {
   constructor(routes: Routes[]) {
     this.app = express();
     this.env = NODE_ENV || 'development';
-    this.port = PORT || 3000;
+    this.port = PORT || 3020;
     this.app.set('port', this.port);
     this.httpServer = createServer(this.app);
     this.http = require('http').Server(this.app);
