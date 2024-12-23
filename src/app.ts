@@ -1,25 +1,3 @@
-<<<<<<< HEAD
-import "reflect-metadata";
-import compression from "compression";
-import cookieParser from "cookie-parser";
-import cors from "cors";
-import express from "express";
-import helmet from "helmet";
-import hpp from "hpp";
-import morgan from "morgan";
-import { connect, set } from "mongoose";
-import swaggerJSDoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
-import { NODE_ENV, PORT, LOG_FORMAT } from "@config";
-import { dbConnection } from "@database";
-import { Routes } from "@interfaces/routes.interface";
-import { ErrorMiddleware } from "@middlewares/error.middleware";
-import { logger, stream } from "@utils/logger";
-import { readFileSync } from 'fs';
-import * as path from 'path';
-import { createServer } from "https";
-export class App {
-=======
 import 'reflect-metadata';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -50,7 +28,6 @@ export class App {
   //     });
   //   });
   // }
->>>>>>> d67e7de05d0dee87828d161ef3b32297ee0574d8
   public app: express.Application;
   public env: string;
   public port: string | number;
@@ -59,50 +36,36 @@ export class App {
   public http: any;
   public httpServer: any;
 
-
   constructor(routes: Routes[]) {
     this.app = express();
-    this.env = NODE_ENV || "development";
-    this.port = PORT || 5000;
+    this.env = NODE_ENV || 'development';
+    this.port = PORT || 3000;
     this.app.set('port', this.port);
-
-    this.httpServer = createServer({
-      // key: readFileSync(path.join(__dirname, "ssl/privkey.pem")),
-      // cert: readFileSync(path.join(__dirname, "ssl/cert.pem")),
-      // ca: readFileSync(path.join(__dirname, "ssl/chain.pem"))
-    }, this.app);
-
+    this.httpServer = createServer(this.app);
     this.http = require('http').Server(this.app);
-<<<<<<< HEAD
-
-=======
     this.app.use(helmet());
->>>>>>> d67e7de05d0dee87828d161ef3b32297ee0574d8
     this.connectToDatabase();
-    this.initializeSwagger();
     this.initializeMiddlewares();
     this.initializeRoutes(routes);
-<<<<<<< HEAD
-    this.initializeErrorHandling();
-    this.app.use(helmet());
-=======
     this.initializeSwagger();
     this.initializeErrorHandling();
 
->>>>>>> d67e7de05d0dee87828d161ef3b32297ee0574d8
   }
 
   public async listen() {
-    const server = this.http.listen(this.port, () => {
-      logger.info(`=================================`);
-      logger.info(`======= ENV: ${this.env} =======`);
-      logger.info(`🚀 App listening on the port ${this.port}`);
-      logger.info(`=================================`);
+    await new Promise((resolve, reject) => {
+      this.http.listen(this.port, () => {
+        console.log(`==========================================`);
+        console.log(`========== ENV: ${this.env} ==============`);
+        Logger.info(`=== 🚀 App listening on the port ${this.port} ===`);
+        console.log(`==========================================`);
+        resolve(true);
+      }).on('error', (error) => {
+        Logger.error('Port is already in use!', error);
+        reject(error);
+      });
     })
-<<<<<<< HEAD
-=======
 
->>>>>>> d67e7de05d0dee87828d161ef3b32297ee0574d8
   }
 
   public getServer() {
@@ -110,30 +73,20 @@ export class App {
   }
 
   private async connectToDatabase() {
-    console.log(">>>>> Environment:", this.env);
-
-    if (this.env !== "production") {
-      set("debug", true);
-    }
+    if (this.env !== 'production') set('debug', true);
 
     try {
       await connect(dbConnection.url);
-      console.log("Database connection successful!");
+      Logger.info('Database connection successfully!!!');
     } catch (error) {
-      console.error("Database connection error:", error);
+      Logger.error(`Database connection ERROR`, error);
       throw error;
     }
   }
 
-
   private initializeMiddlewares() {
-<<<<<<< HEAD
-    this.app.use(morgan(LOG_FORMAT, { stream }));
-    this.app.use(cors({ origin: "*", credentials: false }));
-=======
     // this.app.use(morgan(LOG_FORMAT));
     this.app.use(cors({ origin: '*', credentials: false }));
->>>>>>> d67e7de05d0dee87828d161ef3b32297ee0574d8
     this.app.use(hpp());
     this.app.use(compression());
     this.app.use(express.json());
@@ -144,8 +97,8 @@ export class App {
   }
 
   private initializeRoutes(routes: Routes[]) {
-    routes.forEach((route) => {
-      this.app.use("/api/v1", route.router);
+    routes.forEach(route => {
+      this.app.use('/api/v1', route.router);
     });
 
     this.app.get('/ping', (_req, res) => {
@@ -158,17 +111,17 @@ export class App {
     const options = {
       swaggerDefinition: {
         info: {
-          title: "REST API",
-          version: "1.0.0",
-          description: "Example docs",
+          title: 'REST API',
+          version: '1.0.0',
+          description: 'Example docs',
         },
       },
-      apis: ["swagger.yaml"],
+      apis: ['swagger.yaml'],
     };
 
     const specs = swaggerJSDoc(options);
-    this.app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
-    this.app.get("/ping", (req, res) => {
+    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+    this.app.get('/ping', (req, res) => {
       return res.status(200).send('pong');
     });
   }
@@ -176,21 +129,9 @@ export class App {
   private initializeErrorHandling() {
     this.app.use(ErrorMiddleware);
   }
-<<<<<<< HEAD
-=======
 
   private routHandler(_req: Request, res: Response) {
     res.status(404).json({ message: 'Route not found' });
   }
 
->>>>>>> d67e7de05d0dee87828d161ef3b32297ee0574d8
 }
-
-// const io = require('socket.io')(this.http,{
-//   cors: { origin: '*' }
-// });
-
-//   io.on('connect', (socket) => {
-//     socketController(socket)
-//     this.app.set('socketio', socket);
-// })
