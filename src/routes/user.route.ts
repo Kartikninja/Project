@@ -8,7 +8,7 @@ import multer from "multer";
 
 const upload = multer({
     storage: multer.memoryStorage()
-  });
+});
 
 export class UserRoute implements Routes {
     public path = "/users";
