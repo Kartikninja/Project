@@ -8,6 +8,7 @@ import { sign, verify } from 'jsonwebtoken';
 import { Service } from 'typedi';
 import { sendForgotPasswordEmail, sendWelcomEmail } from '../utils/mailer';
 import { verifyGoogleToken } from '../utils/utils'
+import { USER_ROLES } from '@/utils/constant';
 
 const createToken = (user: User): TokenData => {
   const dataStoredInToken: DataStoredInToken = {
@@ -38,7 +39,11 @@ export class AuthService {
 
     if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`)
     else {
-      userData.password = await hash(userData.password, 10);
+      if (userData.role === USER_ROLES.STORE && !userData.storeDetails) {
+        throw new HttpException(400, 'Store details are required for STORE role');
+      } else if (userData.role === USER_ROLES.USER && userData.storeDetails) {
+        throw new HttpException(400, 'Store details are not allowed for USER role');
+      } userData.password = await hash(userData.password, 10);
       userData.email = userData.email.toLowerCase();
       const createUserData: User = await UserModel.create(userData);
       const tokenData = await createToken(createUserData).token;
