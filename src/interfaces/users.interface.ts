@@ -24,6 +24,16 @@ export interface User {
   token: string;
   data?: object[]
   total?: number;
+  lastLogin: Date;
+  storeDetails: Object[]
+  preferences: Object[]
+  paymentHistory: string
+  dateOfBirth: Date
+  location: Object[];
+  resetPasswordToken: string;
+  resetPasswordTokenExpiresAt: Date,
+  verificationToken: string,
+  verificationTokenExpiresAt: Date,
 }
 export interface UserList {
   data: [User];
@@ -31,4 +41,4 @@ export interface UserList {
 
 export interface GoogleSignInBody {
   code: string;
- }
+}

@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   proxy:
@@ -18,11 +17,9 @@ services:
       context: ./
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
-      DB_HOST: localhost
-      DB_PORT: 27017
-      DB_DATABASE: dev
+      DB_URL: mongodb://localhost:27017/Project
     volumes:
       - ./:/app
       - /app/node_modules
@@ -31,8 +28,10 @@ services:
       - backend
     links:
       - mongo
+      - redis
     depends_on:
       - mongo
+      - redis
 
   mongo:
     container_name: mongo
@@ -40,9 +39,18 @@ services:
     ports:
       - "27017:27017"
     environment:
-      DB_HOST: localhost
-      DB_PORT: 27017
-      DB_DATABASE: dev
+        MONGO_INITDB_DATABASE: Kartik_Project
+        MONGO_INITDB_ROOT_USERNAME: admin 
+        MONGO_INITDB_ROOT_PASSWORD: Kartik02@   
+    networks:
+      - backend
+
+
+  redis:
+    container_name: redis
+    image: redis:alpine
+    ports:
+      - "6379:6379"
     networks:
       - backend
 

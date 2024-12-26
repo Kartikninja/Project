@@ -24,7 +24,7 @@ export class UserRoute implements Routes {
         this.router.post(`${this.path}/pre-signed`, upload.single('file'), this.user.uploadImage);
         this.router.put(`${this.path}/:id`, AuthMiddleware, upload.single('profileImage'), this.user.updateUser);
         this.router.put(`${this.path}/change-password/:id`, AuthMiddleware, this.user.resetPassword);
-        this.router.post(`${this.path}/admin/list`, AuthMiddleware, this.user.listUsers);
+        this.router.post(`${this.path}/admin/getAll`, AuthMiddleware, this.user.listUsers);
         this.router.delete(`${this.path}/:id`, AuthMiddleware, this.user.deleteUser);
     }
 }

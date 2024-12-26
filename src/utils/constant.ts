@@ -1,7 +1,7 @@
 export enum USER_ROLES {
   USER = 1,
   ADMIN = 2,
-  SUPERADMIN = 3,
+  STORE = 3,
 }
 
 export enum PLATFORMS {
