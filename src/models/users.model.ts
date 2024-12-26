@@ -20,6 +20,10 @@ const UserSchema: Schema = new Schema(
     role: { type: Number, enum: USER_ROLES, default: 1 },
     isActive: { type: Boolean, default: true },
     token: { type: String },
+    verificationTokenExpiresAt: {
+      type: Date,
+      allowNull: true,
+    },
     location: {
       latitude: { type: Number, required: false },
       longitude: { type: Number, required: false },

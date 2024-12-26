@@ -28,9 +28,10 @@ const sendEmail = async (toEmail, subject, templateName, additionalData, attachm
     });
 
     const defaultTemplateData = {
-      domainName: domainName, 
+      domainName: domainName,
       copyrightYear: new Date().getFullYear(),
     };
+    console.log("Sending email to:", toEmail);
 
     const templateData = {
       ...defaultTemplateData,
@@ -50,7 +51,7 @@ const sendEmail = async (toEmail, subject, templateName, additionalData, attachm
       from: process.env.GMAIL_USER,
       to: toEmail,
       subject: subject,
-      text: templateData.text || '', 
+      text: templateData.text || '',
       html: html,
       attachments: attachments,
     };
@@ -80,6 +81,22 @@ export const sendForgotPasswordEmail = async (toEmail, name, url) => {
     mainLink: url,
   };
   await sendEmail(toEmail, subject, templateName, additionalData);
+};
+
+export const sendOtpEmail = async (email: string, otp: string, name: string) => {
+  const subject = 'Verify your email with OTP';
+  const appName = 'Project';
+  const year = new Date().getFullYear();
+  console.log("Sending OTP to email:", email);
+
+  const additionalData = {
+    name,
+    otp,
+    appName,
+    year,
+  };
+
+  await sendEmail(email, subject, 'otp', additionalData);
 };
 
 // export const sendVerifyingUserEmail = async (toEmail, name, url) => {

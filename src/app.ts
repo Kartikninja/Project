@@ -9,12 +9,14 @@ import morgan from 'morgan';
 import { connect, set } from 'mongoose';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import { NODE_ENV, PORT, LOG_FORMAT } from '@config';
+import { NODE_ENV, PORT, LOG_FORMAT, REDIS_HOST, REDIS_PORT } from '@config';
 import { dbConnection } from '@database';
 import { Routes } from '@interfaces/routes.interface';
 import { createServer } from 'https';
 import { Logger } from './utils/logger';
 import { ErrorMiddleware } from './middlewares/error.middleware';
+import Redis, { Redis as RedisClient } from 'ioredis'
+
 
 
 export class App {
@@ -35,6 +37,8 @@ export class App {
   public io: any;
   public http: any;
   public httpServer: any;
+  private redisClient: RedisClient | null = null;
+
 
   constructor(routes: Routes[]) {
     this.app = express();
@@ -49,6 +53,8 @@ export class App {
     this.initializeRoutes(routes);
     this.initializeSwagger();
     this.initializeErrorHandling();
+
+    this.initializeRedis()
 
 
   }
@@ -67,6 +73,21 @@ export class App {
       });
     })
 
+  }
+
+  private initializeRedis() {
+    this.redisClient = new Redis({
+      host: REDIS_HOST,
+      port: Number(REDIS_PORT),
+
+    })
+    this.redisClient.on('connect', () => {
+      Logger.info("Redis connected successfully")
+    })
+    this.redisClient.on('error', (err) => {
+      Logger.error('Redis connection error:', err);
+
+    })
   }
 
   public getServer() {

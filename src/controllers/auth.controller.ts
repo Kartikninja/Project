@@ -21,6 +21,31 @@ export class AuthController {
     }
   };
 
+
+  public verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { otp } = req.body
+      if (!otp) {
+        return res.status(400).json({ message: ' OTP are required.' });
+      }
+      const user = req.user;
+      console.log('Authenticated User:', user);
+      if (!user || !user.email) {
+        return res.status(400).json({ message: 'User not authenticated.' });
+      }
+
+      console.log('Authenticated User:', user);
+      const result = await this.auth.verifyOtp(user.email, otp)
+      if (result) {
+        res.status(200).json({ message: 'Email verified successfully.', status: true });
+      } else {
+        res.status(400).json({ message: 'Invalid or expired verification token.' });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
   public logIn = async (req: Request, res: Response, next: NextFunction) => {
     try {
       req.body = pick(req.body);
@@ -54,7 +79,10 @@ export class AuthController {
 
   public forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      req.body = req.body;
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: 'Email is required.' });
+      }
       const forgotPasswordUserData: User = await this.auth.forgotPassword(req.body);
       res.status(200).json({ message: "Mail Sent for the forogt Password" });
     } catch (error) {
@@ -64,8 +92,9 @@ export class AuthController {
 
   public verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const { token } = req.params;
       const userData: User = req.body;
-      const verifyEmailUserData = await this.auth.verifyuserToken(userData.verifyToken);
+      const verifyEmailUserData = await this.auth.verifyuserToken(token);
       res.status(200).json({ data: verifyEmailUserData, message: "Verification Success" });
     } catch (error) {
       next(error);

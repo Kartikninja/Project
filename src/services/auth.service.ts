@@ -6,9 +6,15 @@ import { UserModel } from '@models/users.model';
 import { compare, hash } from 'bcrypt';
 import { sign, verify } from 'jsonwebtoken';
 import { Service } from 'typedi';
-import { sendForgotPasswordEmail, sendWelcomEmail } from '../utils/mailer';
+import { sendForgotPasswordEmail, sendOtpEmail, sendWelcomEmail } from '../utils/mailer';
 import { verifyGoogleToken } from '../utils/utils'
 import { USER_ROLES } from '@/utils/constant';
+import { redisClient } from '@/utils/redisClient';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+
+
+
 
 const createToken = (user: User): TokenData => {
   const dataStoredInToken: DataStoredInToken = {
@@ -34,6 +40,8 @@ const verifyToken = (token: string): DataStoredInToken => {
 };
 @Service()
 export class AuthService {
+
+
   public async signup(userData: User): Promise<{ user: User, token: string }> {
     const findUser: User = await UserModel.findOne({ email: userData.email, isActive: true });
 
@@ -43,15 +51,54 @@ export class AuthService {
         throw new HttpException(400, 'Store details are required for STORE role');
       } else if (userData.role === USER_ROLES.USER && userData.storeDetails) {
         throw new HttpException(400, 'Store details are not allowed for USER role');
-      } userData.password = await hash(userData.password, 10);
+      }
+      userData.password = await hash(userData.password, 10);
       userData.email = userData.email.toLowerCase();
-      const createUserData: User = await UserModel.create(userData);
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const hashedOtp = await bcrypt.hash(otp, 10);
+      const otpExpiration = new Date();
+      otpExpiration.setMinutes(otpExpiration.getMinutes() + 15);
+
+      const createUserData: User = await UserModel.create({
+        ...userData,
+        verifyToken: hashedOtp,
+        verificationTokenExpiresAt: otpExpiration,
+        isVerified: false,
+      });
+      await sendOtpEmail(userData.email, otp, userData.fullName);
+
       const tokenData = await createToken(createUserData).token;
-      await sendWelcomEmail(userData.email, userData.fullName);
+
       await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
       return { user: createUserData, token: tokenData };
     }
   }
+
+
+  public async verifyOtp(email: string, otp: string) {
+    try {
+      const user = await UserModel.findOne({ email: email });
+      console.log(user)
+      if (!user.verificationTokenExpiresAt || new Date() > new Date(user.verificationTokenExpiresAt)) {
+        throw new HttpException(400, 'OTP has expired');
+      }
+      console.log("user.verifyToken", user.verifyToken)
+      const isOtpVerify = await bcrypt.compare(otp, user.verifyToken);
+      if (!isOtpVerify) {
+        throw new HttpException(400, 'Invalid OTP');
+      }
+      user.isVerified = true;
+      user.verifyToken = '';
+      user.verificationTokenExpiresAt = null;
+      await user.save();
+      await sendWelcomEmail(user.email, user.fullName);
+
+      return user;
+    } catch (error) {
+      throw new HttpException(400, 'Invalid OTP');
+    }
+  }
+
 
   public async googleSingIn(body: GoogleSignInBody): Promise<{ user: User, token: string }> {
     const { code } = body;
@@ -119,16 +166,21 @@ export class AuthService {
     const user: User = await UserModel.findOne({ ...userData, isActive: true });
     if (!user) throw new HttpException(409, "User doesn't exist");
     const token = await createToken(user).token;
-    await UserModel.findByIdAndUpdate(user._id, { verifyToken: token }, { new: true });
+    user.token = token
+    console.log('resetToken', token);
+    user.resetPasswordTokenExpiresAt = new Date(Date.now() + 3600000);
+    await user.save()
+
     const link = `${FRONT_END_URL}/reset-password/${token}`;
     await sendForgotPasswordEmail(user.email, user.fullName, link);
     return user;
   }
 
-  public async verifyuserToken(verifyToken: string): Promise<{ findUser: User, tokenData: string }> {
-    const findUser: User = await UserModel.findOne({ verifyToken, isActive: true });
+  public async verifyuserToken(token: string): Promise<{ findUser: User, tokenData: string }> {
+    const findUser: User = await UserModel.findOne({ token: token, isActive: true });
     if (!findUser) throw new HttpException(409, `This token was not valid`);
     const tokenData = await createToken(findUser).token;
+
     return { findUser, tokenData };
   }
 

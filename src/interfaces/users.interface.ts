@@ -29,7 +29,11 @@ export interface User {
   preferences: Object[]
   paymentHistory: string
   dateOfBirth: Date
-  location: Object[]
+  location: Object[];
+  resetPasswordToken: string;
+  resetPasswordTokenExpiresAt: Date,
+  verificationToken: string,
+  verificationTokenExpiresAt: Date,
 }
 export interface UserList {
   data: [User];
