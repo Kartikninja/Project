@@ -17,3 +17,8 @@ export enum SUBSCRIPTIONS_TYPES {
   MONTHLY = 2,
   YEARLY = 3,
 }
+
+export enum Discount_TYPE {
+  PERCENTAGE = 1,
+  FIXED = 2,
+}

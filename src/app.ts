@@ -16,7 +16,7 @@ import { createServer } from 'https';
 import { Logger } from './utils/logger';
 import { ErrorMiddleware } from './middlewares/error.middleware';
 import Redis, { Redis as RedisClient } from 'ioredis'
-
+import { cron1 } from './utils/corn/node-corn';
 
 
 export class App {
@@ -55,7 +55,7 @@ export class App {
     this.initializeErrorHandling();
 
     this.initializeRedis()
-
+    this.initializeCron()
 
   }
 
@@ -74,7 +74,31 @@ export class App {
     })
 
   }
+  private async initializeCron() {
+    console.log("Cron job initialized");
 
+    await cron1
+  }
+
+
+
+
+  // await this.redisClient.hgetall('user:active')
+  // await this.redisClient.hgetall('user:inactive')
+  // await this.redisClient.hgetall('user:all')
+  // await this.redisClient.hgetall('user:active:count')
+  // await this.redisClient.hgetall('user:inactive:count')
+  // await this.redisClient.hgetall('user:all:count')
+  // await this.redisClient.hgetall('user:active:count:today')
+  // await this.redisClient.hgetall('user:inactive:count:today')
+  // await this.redisClient.hgetall('user:all:count:today')
+  // await this.redisClient.hgetall('user:active:count:week')
+  // await this.redisClient.hgetall('user:inactive:count:week')
+  // await this.redisClient.hgetall('user:all:count:week')
+  // await this.redisClient.hgetall('user:active:count:month')
+  // await this.redisClient.hgetall('user:inactive:count:month')
+
+  // await this.redisClient.hgetall('user:all:count:month')
   private initializeRedis() {
     this.redisClient = new Redis({
       host: REDIS_HOST,

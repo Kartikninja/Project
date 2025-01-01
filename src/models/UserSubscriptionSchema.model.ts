@@ -1,0 +1,54 @@
+import { model, Schema, Document } from "mongoose";
+import { UserSubscription } from "@/interfaces/UserSubscription.interface";
+
+const UserSubscriptionSchema: Schema = new Schema({
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    },
+    subscriptionId: {
+        type: Schema.Types.ObjectId,
+        ref: "Subscription",
+        required: true
+    },
+    startDate: {
+        type: Date,
+        default: Date.now
+    },
+    endDate: {
+        type: Date,
+        required: false
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    isAutoRenew: {
+        type: Boolean,
+        default: false
+    },
+    duration: {
+        type: Number,
+        required: false
+    },
+    expiry: {
+        type: Date,
+        required: false,
+        default: null
+    },
+    transactionId: {
+        type: String,
+        required: false
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { timestamps: true });
+
+export const UserSubscriptionModel = model<UserSubscription & Document>('UserSubscription', UserSubscriptionSchema, 'UserSubscriptions');

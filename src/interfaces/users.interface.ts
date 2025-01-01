@@ -3,6 +3,14 @@ export interface Verification {
   expireTime: Date;
   isVerified: Boolean;
 }
+
+
+
+interface Location {
+  type: string
+  coordinates: [number, number]
+}
+
 // Creat User Interface based on User Schema
 export interface User {
   _id?: string;
@@ -19,7 +27,7 @@ export interface User {
   profileImage: string;
   phoneNumber: number;
   verifyToken: string;
-  role: number;
+  role?: number;
   isActive: Boolean;
   token: string;
   data?: object[]
@@ -29,7 +37,7 @@ export interface User {
   preferences: Object[]
   paymentHistory: string
   dateOfBirth: Date
-  location: Object[];
+  currentLocation: Location;
   resetPasswordToken: string;
   resetPasswordTokenExpiresAt: Date,
   verificationToken: string,

@@ -20,7 +20,15 @@ export class AuthController {
       next(error);
     }
   };
-
+  public storeSignUp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      req.body = pick(req.body);
+      const user = await this.auth.storeSignUp(req.body);
+      return res.status(201).json({ data: user, message: "Store registered successfully" });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   public verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
