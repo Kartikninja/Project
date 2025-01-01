@@ -9,4 +9,5 @@ export interface UserSubscription {
     updatedAt: Date;
     expiry: Date | null
     transactionId: string
+    paymentStatus: 'paid' | 'unpaid'
 }

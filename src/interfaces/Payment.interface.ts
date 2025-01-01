@@ -6,4 +6,5 @@ export interface Payment {
     status: 'paid' | 'unpaid';
     paymentMethod: string;
     createdAt: Date;
+    modelName: string
 }

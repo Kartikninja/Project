@@ -75,7 +75,7 @@ class OrderService {
                 }
                 console.log(`Discounted price for product ${productId}: ${discountedPrice}`);
             }
-            const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay');
+            const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order');
             console.log('payment', payment);
 
             const orderId = `ORD-${new Date().getTime()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;

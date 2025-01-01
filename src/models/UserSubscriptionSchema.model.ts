@@ -22,7 +22,7 @@ const UserSubscriptionSchema: Schema = new Schema({
     },
     isActive: {
         type: Boolean,
-        default: true
+        default: false
     },
     isAutoRenew: {
         type: Boolean,
@@ -39,7 +39,12 @@ const UserSubscriptionSchema: Schema = new Schema({
     },
     transactionId: {
         type: String,
-        required: false
+        required: false,
+    },
+    paymentStatus: {
+        type: String,
+        enum: ['paid', 'unpaid'],
+        default: 'unpaid',
     },
     createdAt: {
         type: Date,

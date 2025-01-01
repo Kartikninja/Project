@@ -10,6 +10,8 @@ const PaymentSchema: Schema = new Schema({
     status: { type: String, enum: ['paid', 'unpaid'], default: 'unpaid' },
     paymentMethod: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    modelName: { type: String, require: false }
 });
 
 export const PaymentModel = model<Payment & Document>('Payment', PaymentSchema, 'Paymnets');
