@@ -132,7 +132,7 @@ export class App {
 
   private initializeMiddlewares() {
     // this.app.use(morgan(LOG_FORMAT));
-    this.app.use(cors({ origin: '*', credentials: false }));
+    this.app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
     this.app.use(hpp());
     this.app.use(compression());
     this.app.use(express.json());

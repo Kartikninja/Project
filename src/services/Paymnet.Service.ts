@@ -5,8 +5,8 @@ import { HttpException } from '@exceptions/httpException';
 import Razorpay from 'razorpay';
 
 const razorpayInstance = new Razorpay({
-    key_secret: "Loxg9gQiFNEQcSHzSg0bCRsn",
-    key_id: "rzp_test_Oheg9xnyyzc6SB"
+    key_secret: "lo7Fxm311KWXISgLQ1o7upqg",
+    key_id: "rzp_test_kHxQU3N0KPE61T"
 })
 
 @Service()
@@ -28,7 +28,7 @@ export class PaymentService {
                 userId,
                 transactionId: order.id,
                 amount,
-                status: 'pending',
+                status: 'unpaid',
                 paymentMethod,
                 createdAt: new Date(),
             };
