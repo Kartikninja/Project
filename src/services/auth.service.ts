@@ -5,14 +5,16 @@ import { User, GoogleSignInBody } from '@interfaces/users.interface';
 import { UserModel } from '@models/users.model';
 import { compare, hash } from 'bcrypt';
 import { sign, verify } from 'jsonwebtoken';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { sendForgotPasswordEmail, sendOtpEmail, sendWelcomEmail } from '../utils/mailer';
 import { verifyGoogleToken } from '../utils/utils'
 import { USER_ROLES } from '@/utils/constant';
 import { redisClient } from '@/utils/redisClient';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-
+import { StoreModel } from '@/models/Store.model';
+import { StoreService } from './Store.service';
+import { StoreDocument } from '@interfaces/Store.interface'
 
 
 
@@ -41,17 +43,13 @@ const verifyToken = (token: string): DataStoredInToken => {
 @Service()
 export class AuthService {
 
+  private store = Container.get(StoreService)
 
   public async signup(userData: User): Promise<{ user: User, token: string }> {
     const findUser: User = await UserModel.findOne({ email: userData.email, isActive: true });
 
     if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`)
     else {
-      if (userData.role === USER_ROLES.STORE && !userData.storeDetails) {
-        throw new HttpException(400, 'Store details are required for STORE role');
-      } else if (userData.role === USER_ROLES.USER && userData.storeDetails) {
-        throw new HttpException(400, 'Store details are not allowed for USER role');
-      }
       userData.password = await hash(userData.password, 10);
       userData.email = userData.email.toLowerCase();
       const otp = crypto.randomInt(100000, 999999).toString();
@@ -64,6 +62,7 @@ export class AuthService {
         verifyToken: hashedOtp,
         verificationTokenExpiresAt: otpExpiration,
         isVerified: false,
+        role: 1
       });
       await sendOtpEmail(userData.email, otp, userData.fullName);
 
@@ -73,7 +72,37 @@ export class AuthService {
       return { user: createUserData, token: tokenData };
     }
   }
+  public async storeSignUp(userData: User): Promise<{ user: User, token: string }> {
 
+    const findUser = await UserModel.findOne({ email: userData.email });
+    if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`);
+
+
+    userData.password = await hash(userData.password, 10);
+    userData.email = userData.email.toLowerCase();
+
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otpExpiration = new Date();
+    otpExpiration.setMinutes(otpExpiration.getMinutes() + 15);
+
+    const createUserData: User = await UserModel.create({
+      ...userData,
+      verifyToken: hashedOtp,
+      verificationTokenExpiresAt: otpExpiration,
+      isVerified: false,
+      role: 3
+
+    });
+    await sendOtpEmail(userData.email, otp, userData.fullName);
+
+    const tokenData = await createToken(createUserData).token;
+
+    await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
+    return { user: createUserData, token: tokenData };
+
+  }
 
   public async verifyOtp(email: string, otp: string) {
     try {
@@ -132,6 +161,7 @@ export class AuthService {
     const findUser: User = await UserModel.findOne({ email, isActive: true }).lean()
     if (!findUser) throw new HttpException(401, `Email Does not Exist, Please Sing Up`);
     if (!findUser.password) throw new HttpException(401, `You are logged-in via social platform. Please login in with your social account`);
+    if (!findUser.isVerified) throw new HttpException(401, `User is not verified. Please verify your email to log in.`);
 
     const data = await compare(password, findUser.password)
     if (!data) throw new HttpException(409, `Invalid Password`);
