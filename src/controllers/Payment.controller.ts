@@ -7,7 +7,17 @@ import { UserSubscriptionModel } from '@/models/UserSubscriptionSchema.model';
 import { UserSubscriptionService } from '@/services/UserSubscription.service';
 import { OrderModel } from '@/models/Order.model';
 import { ProductVariant } from '@/models/ProductVariant.model';
+import { HttpException } from '@/exceptions/httpException';
+import razorpay from 'razorpay';
+import { PaymentModel } from '@/models/Payment.model';
+import { SubscriptionModel } from '@/models/Subscription.model';
 
+
+
+export const razorpayInstance = new razorpay({
+    key_secret: "lo7Fxm311KWXISgLQ1o7upqg",
+    key_id: "rzp_test_kHxQU3N0KPE61T"
+})
 
 export class PaymentController {
     private paymentService = Container.get(PaymentService);
@@ -23,69 +33,89 @@ export class PaymentController {
             return res.status(error.status || 500).json({ message: error.message });
         }
     }
-    public async razorpayWebhook(req: Request, res: Response, next: NextFunction): Promise<Response> {
-        const secret = 'Kartik02@';
-        const body = JSON.stringify(req.body);
-        const razorpaySignature = req.headers['x-razorpay-signature'] as string;
-        const razorpayTimestamp = req.headers['x-razorpay-timestamp'] as string;
 
 
-        console.log("Received Signature:", razorpaySignature);
-        console.log("Razorpay Timestamp:", razorpayTimestamp);
 
+
+
+    public async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
+        console.log('Request Body:', req.body);
+        const { razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+        console.log('razorpay_payment_id:', razorpayPaymentId);
+        console.log('razorpayOrderId:', razorpayOrderId);
+        console.log('razorpaySignature:', razorpaySignature);
+
+        const body = razorpayOrderId + '|' + razorpayPaymentId;
+
+        const secretKey = 'lo7Fxm311KWXISgLQ1o7upqg';
         const generatedSignature = crypto
-            .createHmac('sha256', secret)
+            .createHmac('sha256', secretKey)
             .update(body)
             .digest('hex');
 
-        console.log("Generated Signature:", generatedSignature);
+        console.log('Generated Signature:', generatedSignature);
+        console.log('Received Signature:', razorpaySignature);
+
         if (generatedSignature !== razorpaySignature) {
-            return res.status(400).json({ message: 'Invalid signature' });
+            console.log('Signature mismatch');
+            throw new HttpException(400, 'Invalid signature');
         }
 
         try {
-            const event = req.body.event;
-            const paymentDetails = req.body.payload.payment.entity;
-            const transactionId = paymentDetails.id;
+            // Fetch payment details from Razorpay
+            const payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
+            console.log('Payment Status:', payment.status);
 
-            if (event === 'payment.captured') {
-                await this.paymentService.updatePaymentStatus(paymentDetails.id, 'success');
-                await this.userSubscriptionService.activateUserSubscription(paymentDetails.id);
-                await this.paymentService.updatePaymentStatus(transactionId, 'paid');
+            if (payment.status === 'captured') {
+                const updatedPayment = await PaymentModel.findOneAndUpdate(
+                    { transactionId: razorpayOrderId },
+                    { status: 'paid' },
+                    { new: true }
+                );
+
+                if (!updatedPayment) {
+                    console.error('Payment not found for transactionId:', razorpayOrderId);
+                    throw new HttpException(404, 'Payment record not found');
+                }
+
                 const updatedOrder = await OrderModel.findOneAndUpdate(
-                    { transactionId },
+                    { transactionId: razorpayOrderId },
                     { paymentStatus: 'paid', orderStatus: 'confirmed' },
                     { new: true }
                 );
-                await UserSubscriptionModel.findOneAndUpdate(
-                    { transactionId: paymentDetails.id },
-                    { isActive: true },
+
+                if (!updatedOrder) {
+                    console.error('Order not found for transactionId:', razorpayOrderId);
+                    throw new HttpException(404, 'Order record not found');
+                }
+
+                const updatedSubscription = await UserSubscriptionModel.findOneAndUpdate(
+                    { transactionId: razorpayOrderId },
+                    { status: 'active' },
                     { new: true }
                 );
-                if (updatedOrder) {
-                    await Promise.all(
-                        updatedOrder.products.map(async (product) => {
-                            await ProductVariant.findByIdAndUpdate(product.productId, {
-                                $inc: { stock: -product.quantity },
-                            });
-                        })
-                    );
+
+                if (!updatedSubscription) {
+                    console.warn('Subscription not found for transactionId:', razorpayOrderId);
+
                 }
-            } else if (event === 'payment.failed') {
-                await this.paymentService.updatePaymentStatus(paymentDetails.id, 'failed');
-                await this.paymentService.updatePaymentStatus(transactionId, 'failed');
-                await OrderModel.findOneAndUpdate(
-                    { transactionId },
-                    { paymentStatus: 'failed', orderStatus: 'canceled' }
-                );
+
+                return res.status(200).json({
+                    message: 'Payment verified successfully',
+                    updatedPayment,
+                    updatedOrder,
+                    updatedSubscription,
+                });
+            } else {
+                console.log('Payment not captured');
+                throw new HttpException(400, 'Payment verification failed');
             }
-
-
-            return res.status(200).json({ message: 'Webhook received successfully' });
         } catch (error) {
-            next(error);
+            console.error('Error verifying payment:', error);
+            throw new HttpException(500, 'Error verifying payment');
         }
     }
+
 
     public async createPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
         const paymentData: Payment = req.body;
@@ -107,3 +137,4 @@ export class PaymentController {
         }
     }
 }
+

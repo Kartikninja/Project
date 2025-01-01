@@ -4,11 +4,11 @@ import { model, Schema, Types } from 'mongoose';
 
 const ObjectId = Schema.Types.ObjectId
 const PaymentSchema: Schema = new Schema({
-    userId: { type: ObjectId, ref: 'User', required: true },
-    transactionId: { type: String, required: true },
-    amount: { type: Number, required: true },
-    status: { type: String, required: true },
-    paymentMethod: { type: String, required: true },
+    userId: { type: ObjectId, ref: 'User', required: false },
+    transactionId: { type: String, required: false },
+    amount: { type: Number, required: false },
+    status: { type: String, enum: ['paid', 'unpaid'], default: 'unpaid' },
+    paymentMethod: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
 });
 
