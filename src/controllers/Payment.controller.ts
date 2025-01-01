@@ -24,10 +24,10 @@ export class PaymentController {
     private userSubscriptionService = Container.get(UserSubscriptionService)
 
     public async createRazorpayPayment(req: Request, res: Response): Promise<Response> {
-        const { amount, userId, paymentMethod } = req.body;
+        const { amount, userId, paymentMethod, modelName } = req.body;
 
         try {
-            const newPayment = await this.paymentService.createRazorpayOrder(amount, userId, paymentMethod);
+            const newPayment = await this.paymentService.createRazorpayOrder(amount, userId, paymentMethod, modelName);
             return res.status(201).json(newPayment);
         } catch (error) {
             return res.status(error.status || 500).json({ message: error.message });
@@ -40,7 +40,7 @@ export class PaymentController {
 
     public async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
         console.log('Request Body:', req.body);
-        const { razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+        const { razorpayPaymentId, razorpayOrderId, razorpaySignature, modelName } = req.body;
         console.log('razorpay_payment_id:', razorpayPaymentId);
         console.log('razorpayOrderId:', razorpayOrderId);
         console.log('razorpaySignature:', razorpaySignature);
@@ -62,11 +62,13 @@ export class PaymentController {
         }
 
         try {
-            // Fetch payment details from Razorpay
+
             const payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
             console.log('Payment Status:', payment.status);
 
             if (payment.status === 'captured') {
+
+
                 const updatedPayment = await PaymentModel.findOneAndUpdate(
                     { transactionId: razorpayOrderId },
                     { status: 'paid' },
@@ -78,33 +80,41 @@ export class PaymentController {
                     throw new HttpException(404, 'Payment record not found');
                 }
 
-                const updatedOrder = await OrderModel.findOneAndUpdate(
-                    { transactionId: razorpayOrderId },
-                    { paymentStatus: 'paid', orderStatus: 'confirmed' },
-                    { new: true }
-                );
 
-                if (!updatedOrder) {
-                    console.error('Order not found for transactionId:', razorpayOrderId);
-                    throw new HttpException(404, 'Order record not found');
+                if (modelName === 'Order') {
+                    const updatedOrder = await OrderModel.findOneAndUpdate(
+                        { transactionId: razorpayOrderId },
+                        { paymentStatus: 'paid', orderStatus: 'confirmed' },
+                        { new: true }
+                    );
+
+                    if (!updatedOrder) {
+                        console.error('Order not found for transactionId:', razorpayOrderId);
+                        throw new HttpException(404, 'Order record not found');
+                    }
+                    console.log("Order status Update successfull")
+                    return res.status(200).json({ message: 'Order Payment verified successfully', updatedOrder })
+
                 }
+                else if (modelName === 'SubScription') {
 
-                const updatedSubscription = await UserSubscriptionModel.findOneAndUpdate(
-                    { transactionId: razorpayOrderId },
-                    { status: 'active' },
-                    { new: true }
-                );
+                    const updatedSubscription = await UserSubscriptionModel.findOneAndUpdate(
+                        { transactionId: razorpayOrderId },
+                        { paymentStatus: 'paid' },
+                        { new: true }
+                    );
 
-                if (!updatedSubscription) {
-                    console.warn('Subscription not found for transactionId:', razorpayOrderId);
+                    if (!updatedSubscription) {
+                        console.warn('Subscription not found for transactionId:', razorpayOrderId);
 
+                    }
+                    return res.status(200).json({ message: 'Subscription Payment verified successfully', updatedSubscription })
                 }
 
                 return res.status(200).json({
                     message: 'Payment verified successfully',
-                    updatedPayment,
-                    updatedOrder,
-                    updatedSubscription,
+                    updatedPayment
+
                 });
             } else {
                 console.log('Payment not captured');

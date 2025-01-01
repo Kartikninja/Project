@@ -8,13 +8,15 @@ export class UserSubscriptionController {
     private userSub = Container.get(UserSubscriptionService)
 
     public add = async (req: Request, res: Response, next: NextFunction) => {
+        console.log("Hit UserSubscription API")
         try {
             const userId = req.user._id
             const { subscriptionId } = req.params;
+            console.log("subscriptionId", subscriptionId)
 
             const { startDate, isAutoRenew } = req.body;
-            const result = await this.userSub.addSubscription(userId, subscriptionId, startDate, isAutoRenew);
-            res.json({ message: "Subscription added successfully", status: true, result });
+            const { subscription, paymentDetails } = await this.userSub.addSubscription(userId, subscriptionId, startDate, isAutoRenew);
+            res.json({ message: "Subscription added successfully", status: true, subscription, paymentDetails });
         } catch (error) {
             next(error);
         }

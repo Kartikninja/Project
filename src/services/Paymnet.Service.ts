@@ -14,7 +14,7 @@ export class PaymentService {
 
 
 
-    public async createRazorpayOrder(amount: number, userId: string, paymentMethod: string): Promise<Payment> {
+    public async createRazorpayOrder(amount: number, userId: string, paymentMethod: string, modelName: string): Promise<Payment> {
         try {
             const options = {
                 amount: amount * 100,
@@ -30,6 +30,7 @@ export class PaymentService {
                 amount,
                 status: 'unpaid',
                 paymentMethod,
+                modelName,
                 createdAt: new Date(),
             };
             const newPayment = await this.createPayment(paymentData);

@@ -22,7 +22,7 @@ export class UserSubscriptionService {
         const checkSub = await SubscriptionModel.findById({ _id: subscriptionId })
         console.log("checkSub", checkSub)
         console.log("checkSub.isActive", checkSub.isActive)
-        if (!checkSub || checkSub.isActive === 'false' || checkSub.isActive === false) {
+        if (!checkSub || checkSub.isActive === false) {
             throw new HttpException(409, 'Subscription not found')
         }
         const price = checkSub.price
@@ -31,14 +31,15 @@ export class UserSubscriptionService {
             throw new HttpException(409, 'User not found')
         }
 
-
+        console.log("price", price)
         const checkSubUser = await UserSubscriptionModel.findOne({ userId, subscriptionId, isActive: true })
         if (checkSubUser) {
             throw new HttpException(409, 'Subscription already exists')
         }
 
-        const newPaymnet = await this.payment.createRazorpayOrder(price, userId, 'SubScription')
-        console.log("newPaymnet", newPaymnet)
+        const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
+        console.log("newPayment", newPayment)
+        console.log("newPayment.transactionId", newPayment.transactionId)
         const startDateSelect = startDate || new Date();
         console.log("Start Date:", startDateSelect);
         const endDate = new Date(startDateSelect)
@@ -52,13 +53,15 @@ export class UserSubscriptionService {
             isActive: true,
             isAutoRenew,
             expiry: endDate,
-            price
+            price,
+            transactionId: newPayment.transactionId,
+
         };
 
         const newUserSubscription = new UserSubscriptionModel(userSubscriptionData);
         const savedSubscription = await newUserSubscription.save();
         await UserModel.findByIdAndUpdate(userId, { $push: { subscription: newUserSubscription._id } })
-        return savedSubscription;
+        return { subscription: savedSubscription, paymentDetails: newPayment };
     };
 
     public async activateUserSubscription(transactionId: string): Promise<void> {
@@ -71,14 +74,14 @@ export class UserSubscriptionService {
             }
 
             // Check if the payment was successful
-            if (payment.status !== 'success') {
+            if (payment.status !== 'paid') {
                 throw new Error('Payment not successful');
             }
 
-            // Find the user's subscription linked to this payment
+
             const userSubscription = await UserSubscriptionModel.findOne({
                 userId: payment.userId,
-                subscriptionId: payment.subscriptionId,
+                subscriptionId: payment.transactionId,
                 isActive: false
             });
 
@@ -86,7 +89,7 @@ export class UserSubscriptionService {
                 throw new Error('Subscription not found');
             }
 
-            // Update subscription status to active
+
             userSubscription.isActive = true;
             await userSubscription.save();
 

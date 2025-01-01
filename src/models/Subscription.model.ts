@@ -19,8 +19,9 @@ const SubscriptionSchema: Schema = new Schema({
         type: [String],
         required: true
     },
+
     isActive: {
-        type: String,
+        type: Boolean,
         deflate: false
     },
     createdAt: {
