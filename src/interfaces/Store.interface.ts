@@ -5,7 +5,8 @@ interface Location {
     coordinates: [number, number];
 }
 interface Store {
-    userId: ObjectId;
+
+    _id?: string;
     storeName: string;
     storeImage?: string[];
     storeDescription?: string;
@@ -16,6 +17,23 @@ interface Store {
     createdAt: Date;
     updatedAt: Date;
     status: 'pending' | 'approved' | 'rejected';
+    isVerified: boolean
+    profileImage: string
+    registrationDate: Date
+    verifyToken: string
+    token: string
+    verificationTokenExpiresAt: Date
+    dateOfBirth: Date
+    lastLogin: Date
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    address?: string;
+    role: number
+    password: string
+    resetPasswordToken: string;
+    resetPasswordTokenExpiresAt: Date,
+
 
 }
 

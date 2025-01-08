@@ -1,13 +1,56 @@
 import { model, Schema, Document } from 'mongoose';
 import { StoreDocument } from '@interfaces/Store.interface';
+import { USER_ROLES } from '@/utils/constant';
 
 const StoreSchema: Schema = new Schema(
     {
-        userId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+
+        fullName: {
+            type: String,
+            required: true,
+            trim: true,
         },
+        isVerified: { type: Boolean, default: false },
+        profileImage: { type: String },
+        registrationDate: { type: String },
+        verifyToken: { type: String },
+        token: { type: String },
+        verificationTokenExpiresAt: {
+            type: Date,
+            allowNull: true,
+        },
+        dateOfBirth: { type: Date },
+        lastLogin: { type: Date },
+
+        role: {
+            type: Number,
+            enum: USER_ROLES,
+            default: 3
+        },
+        email: {
+            type: String,
+            required: true,
+            trim: true,
+            match: [/^\S+@\S+\.\S+$/, 'Invalid email format'],
+        },
+        password: {
+            type: String,
+            required: true,
+        },
+        phoneNumber: {
+            type: String,
+            required: true,
+            trim: true,
+            match: [/^\+?\d{7,15}$/, 'Invalid phone number format'],
+        },
+        address: {
+            type: String,
+            required: false,
+            trim: true,
+
+        },
+
+
         storeName: {
             type: String,
             required: true
@@ -36,6 +79,12 @@ const StoreSchema: Schema = new Schema(
             type: Boolean,
             default: true
         },
+        resetPasswordToken: {
+            type: String,
+            required: false
+        },
+        resetPasswordTokenExpiresAt: { type: Date, required: false },
+
         createdAt: {
             type: Date,
             default: Date.now

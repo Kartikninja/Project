@@ -72,37 +72,39 @@ export class AuthService {
       return { user: createUserData, token: tokenData };
     }
   }
-  public async storeSignUp(userData: User): Promise<{ user: User, token: string }> {
 
-    const findUser = await UserModel.findOne({ email: userData.email });
-    if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`);
+  // public async storeSignUp(userData: User): Promise<{ user: User, token: string }> {
 
-
-    userData.password = await hash(userData.password, 10);
-    userData.email = userData.email.toLowerCase();
+  //   const findUser = await UserModel.findOne({ email: userData.email });
+  //   if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`);
 
 
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const hashedOtp = await bcrypt.hash(otp, 10);
-    const otpExpiration = new Date();
-    otpExpiration.setMinutes(otpExpiration.getMinutes() + 15);
+  //   userData.password = await hash(userData.password, 10);
+  //   userData.email = userData.email.toLowerCase();
 
-    const createUserData: User = await UserModel.create({
-      ...userData,
-      verifyToken: hashedOtp,
-      verificationTokenExpiresAt: otpExpiration,
-      isVerified: false,
-      role: 3
 
-    });
-    await sendOtpEmail(userData.email, otp, userData.fullName);
+  //   const otp = crypto.randomInt(100000, 999999).toString();
+  //   const hashedOtp = await bcrypt.hash(otp, 10);
+  //   const otpExpiration = new Date();
+  //   otpExpiration.setMinutes(otpExpiration.getMinutes() + 15);
 
-    const tokenData = await createToken(createUserData).token;
+  //   const createUserData: User = await UserModel.create({
+  //     ...userData,
+  //     verifyToken: hashedOtp,
+  //     verificationTokenExpiresAt: otpExpiration,
+  //     isVerified: false,
+  //     role: 3
 
-    await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
-    return { user: createUserData, token: tokenData };
+  //   });
+  //   await sendOtpEmail(userData.email, otp, userData.fullName);
 
-  }
+  //   const tokenData = await createToken(createUserData).token;
+
+  //   await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
+  //   return { user: createUserData, token: tokenData };
+  // }
+
+
 
   public async verifyOtp(email: string, otp: string) {
     try {
