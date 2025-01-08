@@ -6,12 +6,15 @@ import { DataStoredInToken, RequestWithUser } from "@interfaces/auth.interface";
 import { User } from "@interfaces/users.interface";
 import { UserModel } from "@models/users.model";
 import { USER_ROLES } from "@utils/constant";
+import { StoreModel } from "@/models/Store.model";
+import { StoreDocument } from "@/interfaces/Store.interface";
 
 
 declare global {
   namespace Express {
     interface Request {
       user: User
+      store: StoreDocument
       file: string
     }
   }
@@ -43,6 +46,28 @@ export const AuthMiddleware = async (req: RequestWithUser, res: Response, next: 
     return res.status(401).json({ message: "Invalid or Expired Token" });
   }
 };
+export const AuthMiddlewareStore = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+  try {
+    const Authorization = getAuthorization(req);
+    if (Authorization) {
+      const { _id, role } = (await verify(Authorization, SECRET_KEY)) as DataStoredInToken;
+      const findStore = await StoreModel.findById(_id); // Assuming StoreModel is the correct model
+      if (!findStore) return res.status(401).json({ message: "Store not found." });
+
+      if (!findStore.token) return res.status(401).json({ message: "You are Logged Out" });
+      if (findStore.token !== Authorization) return res.status(401).json({ message: "Invalid or Expired Token" });
+
+      req.store = { ...findStore.toObject(), _id: findStore._id, role: findStore.role, email: findStore.email } as StoreDocument;
+      next();
+    } else {
+      return res.status(401).json({ message: "Authentication Token Missing" });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid or Expired Token" });
+  }
+};
+
 
 export const isAdmin = async (
   req: RequestWithUser,

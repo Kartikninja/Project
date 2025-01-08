@@ -108,6 +108,7 @@ export class PaymentController {
                         console.warn('Subscription not found for transactionId:', razorpayOrderId);
 
                     }
+                    console.log("Subscription status Update successfull")
                     return res.status(200).json({ message: 'Subscription Payment verified successfully', updatedSubscription })
                 }
 

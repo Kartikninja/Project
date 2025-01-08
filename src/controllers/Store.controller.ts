@@ -1,6 +1,9 @@
+import { StoreDocument } from "@/interfaces/Store.interface";
 import { StoreModel } from "@/models/Store.model";
 import { StoreService } from "@/services/Store.service";
+import { pick } from "@/utils/utils";
 import { NextFunction, Request, Response } from "express";
+import { token } from "morgan";
 import Container from "typedi";
 
 export class StoreController {
@@ -9,16 +12,25 @@ export class StoreController {
 
 
     public CreateStore = async (req: Request, res: Response, next: NextFunction) => {
-        const { storeName, storeDescription, location, subscription, discountApplied } = req.body;
-        const userId = req.user._id
-        const userRole = req.user.role
-        if (userRole !== 3) {
-            res.status(403).json({ message: "You are not authorized to create a store" })
+        const { storeName, storeDescription, location, dateOfBirth, password, profileImage, subscription, discountApplied, fullName, email, phoneNumber, address,
+            storeImage } = req.body;
 
-        }
         try {
-            const store = await this.storeService.createStore(userId, req.body);
+            const store = await this.storeService.createStore({
+                storeName,
+                storeDescription,
+                location,
+                storeImage,
+                fullName,
+                email,
+                phoneNumber,
+                address,
+                role: 3,
+                profileImage,
+                dateOfBirth,
+                password
 
+            });
             res.status(201).json({
                 data: { store },
                 message: 'Store created and user updated successfully',
@@ -28,6 +40,80 @@ export class StoreController {
             next(error);
         }
     }
+
+
+    public verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { otp } = req.body
+            console.log("otp", otp)
+            if (!otp) {
+                return res.status(400).json({ message: ' OTP are required.' });
+            }
+            const user = req.store;
+
+            console.log('Authenticated User:', user);
+            if (!user || !user.email) {
+                return res.status(400).json({ message: 'User not authenticated.' });
+            }
+
+            console.log('Authenticated User:', user);
+            const result = await this.storeService.verifyOtp(user.email, otp)
+            if (result) {
+                res.status(200).json({ message: 'Email verified successfully.', status: true });
+            } else {
+                res.status(400).json({ message: 'Invalid or expired verification token.' });
+            }
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    public logIn = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            req.body = pick(req.body);
+            const loginUserData: { findUser: StoreDocument, tokenData: string } | string = await this.storeService.login(req.body);
+            if (loginUserData?.findUser) return res.status(200).json({ message: "User Logged in", data: { user: loginUserData?.findUser, token: loginUserData?.tokenData } });
+            else return res.status(401).json({ message: loginUserData });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+
+    public forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { email } = req.body
+            if (!email) {
+                return res.status(400).json({ message: 'Email is required.' })
+            }
+            const forgotPassword: StoreDocument = await this.storeService.forgotPassword(req.body)
+            res.status(200).json({ message: "Mail sent for the User", status: true })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+
+    public verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { token } = req.params;
+
+            const verifyEmailUserData = await this.storeService.verifyToken(token);
+            res.status(200).json({ data: verifyEmailUserData, message: "Verification Success" });
+        } catch (error) {
+            next(error);
+        }
+    }
+    public resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { token } = req.params
+            const { password } = req.body
+            const user = await this.storeService.resetPassword(token, password);
+            res.status(200).json({ message: "Reset Password successfully" });
+        } catch (error) {
+            next(error);
+        }
+    };
 
     public getAll = async (req: Request, res: Response, next: NextFunction) => {
         try {
