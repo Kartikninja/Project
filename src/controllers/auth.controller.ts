@@ -11,6 +11,7 @@ export class AuthController {
 
   public signUp = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log("req.body", req.body)
       req.body = pick(req.body);
       const signUpUserData = await this.auth.signup(req.body);
       const user = signUpUserData.user
@@ -21,7 +22,7 @@ export class AuthController {
     }
   };
 
-  
+
   // public storeSignUp = async (req: Request, res: Response, next: NextFunction) => {
   //   try {
   //     req.body = pick(req.body);

@@ -5,8 +5,8 @@ import { HttpException } from '@exceptions/httpException';
 import Razorpay from 'razorpay';
 
 const razorpayInstance = new Razorpay({
-    key_secret: "lo7Fxm311KWXISgLQ1o7upqg",
-    key_id: "rzp_test_kHxQU3N0KPE61T"
+    key_secret: "lFyT6jiqYGP9YKarQS5zYti2",
+    key_id: "rzp_test_4GLQncw9smRzS3"
 })
 
 @Service()

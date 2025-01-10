@@ -1,5 +1,5 @@
 import { StoreModel } from "@/models/Store.model";
-import { Service } from "typedi";
+import Container, { Service } from "typedi";
 import { StoreDocument } from '@interfaces/Store.interface'
 import { UserModel } from "@/models/users.model";
 import { HttpException } from "@/exceptions/httpException";
@@ -11,6 +11,7 @@ import { sendForgotPasswordEmail, sendOtpEmail, sendWelcomEmail } from "@/utils/
 import { FRONT_END_URL, SECRET_KEY } from "@/config";
 import { sign, verify } from 'jsonwebtoken';
 import { DataStoredInToken, TokenData } from "@/interfaces/auth.interface";
+import { NotificationService } from "./Notification.service";
 
 
 
@@ -43,6 +44,9 @@ const verifyToken = (token: string): DataStoredInToken => {
 @Service()
 export class StoreService {
 
+    private notificationService = Container.get(NotificationService)
+
+
     public async createStore(storeData: Partial<StoreDocument>) {
         const emailExists = await StoreModel.findOne({ email: storeData.email, isActive: true });
         const phoneExits = await StoreModel.findOne({ phoneNumber: storeData.phoneNumber, isActive: true })
@@ -68,6 +72,27 @@ export class StoreService {
                 throw new HttpException(500, 'Failed to send OTP email');
             }
             const tokenData = await createToken(createStoreData).token
+            const adminMessage = `New Store Created: ${createStoreData.storeName}`;
+            await this.notificationService.sendAdminNotification(
+                'Store',
+                createStoreData._id,
+                adminMessage,
+                'success',
+                'Admin'
+            );
+            const io = this.notificationService.getIO();
+            if (io) {
+                try {
+                    io.to('admin-room').emit('notification', {
+                        message: adminMessage,
+                        storeId: createStoreData._id,
+                        type: 'new-store',
+                    });
+                    console.log(`Admin notified of new store: ${createStoreData.storeName}`);
+                } catch (error) {
+                    console.error('Error emitting notification to admin:', error);
+                }
+            }
             await StoreModel.updateOne({ _id: createStoreData._id }, { token: tokenData })
             return { Store: createStoreData, token: tokenData }
         }

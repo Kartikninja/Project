@@ -1,4 +1,5 @@
-import { Document, ObjectId } from 'mongoose';
+import { ObjectId } from 'mongoose';
+import { Document } from 'mongodb'
 
 interface Location {
     type: string;
