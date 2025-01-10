@@ -9,18 +9,21 @@ import { PaymentService } from './Paymnet.Service';
 import { DiscountModel } from '@/models/Discount.model';
 import { Discount_TYPE } from '@/utils/constant';
 import { SubCategory } from '@/models/SubCategory.model';
+import { NotificationService } from './Notification.service';
+
+
 
 @Service()
 class OrderService {
 
     private payment = Container.get(PaymentService)
-
+    private notification = Container.get(NotificationService)
 
 
     public async createOrder(userId: string, orderData: any): Promise<any> {
         const { storeId, products, shippingAddress, discountCode } = orderData;
 
-
+        console.log("orderData", orderData)
         const store = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' });
         if (!store) throw new HttpException(404, 'This Store is not found');
 
@@ -91,6 +94,32 @@ class OrderService {
                 transactionId: payment.transactionId,
             });
 
+
+
+            await this.notification.sendAdminNotification(
+                'Store',
+                orderId,
+                `New Order Received from ${user.fullName}`,
+                'success',
+                'Store'
+            )
+
+
+            const io = this.notification.getIO()
+
+            if (io) {
+                try {
+                    io.to(`store_${storeId}`).emit('notification', {
+                        message: `New order from ${user.fullName}`,
+                        orderId: order._id,
+                        userId: userId,
+                        type: 'new-order',
+                    });
+                    console.log(`Notification sent to store ${storeId}`);
+                } catch (error) {
+                    console.error('Error emitting notification:', error);
+                }
+            }
             return { order, payment };
         } catch (error) {
             console.error('Error creating order:', error);

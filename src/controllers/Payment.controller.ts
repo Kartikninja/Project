@@ -15,8 +15,8 @@ import { SubscriptionModel } from '@/models/Subscription.model';
 
 
 export const razorpayInstance = new razorpay({
-    key_secret: "lo7Fxm311KWXISgLQ1o7upqg",
-    key_id: "rzp_test_kHxQU3N0KPE61T"
+    key_secret: "lFyT6jiqYGP9YKarQS5zYti2",
+    key_id: "rzp_test_4GLQncw9smRzS3"
 })
 
 export class PaymentController {
@@ -47,7 +47,7 @@ export class PaymentController {
 
         const body = razorpayOrderId + '|' + razorpayPaymentId;
 
-        const secretKey = 'lo7Fxm311KWXISgLQ1o7upqg';
+        const secretKey = 'lFyT6jiqYGP9YKarQS5zYti2';
         const generatedSignature = crypto
             .createHmac('sha256', secretKey)
             .update(body)

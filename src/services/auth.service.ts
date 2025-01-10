@@ -8,13 +8,9 @@ import { sign, verify } from 'jsonwebtoken';
 import Container, { Service } from 'typedi';
 import { sendForgotPasswordEmail, sendOtpEmail, sendWelcomEmail } from '../utils/mailer';
 import { verifyGoogleToken } from '../utils/utils'
-import { USER_ROLES } from '@/utils/constant';
-import { redisClient } from '@/utils/redisClient';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { StoreModel } from '@/models/Store.model';
-import { StoreService } from './Store.service';
-import { StoreDocument } from '@interfaces/Store.interface'
+import { NotificationService } from './Notification.service';
 
 
 
@@ -43,9 +39,10 @@ const verifyToken = (token: string): DataStoredInToken => {
 @Service()
 export class AuthService {
 
-  private store = Container.get(StoreService)
+  private notificationService = Container.get(NotificationService)
 
   public async signup(userData: User): Promise<{ user: User, token: string }> {
+    console.log("userData", userData)
     const findUser: User = await UserModel.findOne({ email: userData.email, isActive: true });
 
     if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`)
@@ -67,43 +64,26 @@ export class AuthService {
       await sendOtpEmail(userData.email, otp, userData.fullName);
 
       const tokenData = await createToken(createUserData).token;
+      await this.notificationService.sendAdminNotification('User', createUserData._id, `New user signed up: ${userData.fullName}`, 'success',
+        'Admin')
+      const io = this.notificationService.getIO();
+      if (io) {
+        try {
 
+          io.to('admin_room').emit('notification', {
+            message: `New user signed up: ${userData.fullName}`,
+            userId: createUserData._id,
+            type: 'user-signup'
+          });
+          console.log('Notification emitted to admin room');
+        } catch (error) {
+          console.error('Error emitting notification to admin:', error);
+        }
+      }
       await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
       return { user: createUserData, token: tokenData };
     }
   }
-
-  // public async storeSignUp(userData: User): Promise<{ user: User, token: string }> {
-
-  //   const findUser = await UserModel.findOne({ email: userData.email });
-  //   if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`);
-
-
-  //   userData.password = await hash(userData.password, 10);
-  //   userData.email = userData.email.toLowerCase();
-
-
-  //   const otp = crypto.randomInt(100000, 999999).toString();
-  //   const hashedOtp = await bcrypt.hash(otp, 10);
-  //   const otpExpiration = new Date();
-  //   otpExpiration.setMinutes(otpExpiration.getMinutes() + 15);
-
-  //   const createUserData: User = await UserModel.create({
-  //     ...userData,
-  //     verifyToken: hashedOtp,
-  //     verificationTokenExpiresAt: otpExpiration,
-  //     isVerified: false,
-  //     role: 3
-
-  //   });
-  //   await sendOtpEmail(userData.email, otp, userData.fullName);
-
-  //   const tokenData = await createToken(createUserData).token;
-
-  //   await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
-  //   return { user: createUserData, token: tokenData };
-  // }
-
 
 
   public async verifyOtp(email: string, otp: string) {

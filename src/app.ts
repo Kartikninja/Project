@@ -17,7 +17,7 @@ import { Logger } from './utils/logger';
 import { ErrorMiddleware } from './middlewares/error.middleware';
 import Redis, { Redis as RedisClient } from 'ioredis'
 import { cron1 } from './utils/corn/node-corn';
-
+import { initializeSocket } from './utils/socket/socket';
 
 export class App {
   // private initializeErrorHandling() {
@@ -34,10 +34,11 @@ export class App {
   public env: string;
   public port: string | number;
   public server: any;
-  public io: any;
   public http: any;
   public httpServer: any;
   private redisClient: RedisClient | null = null;
+  private io: any;
+
 
 
   constructor(routes: Routes[]) {
@@ -54,8 +55,13 @@ export class App {
     this.initializeSwagger();
     this.initializeErrorHandling();
 
+
+    initializeSocket(this.httpServer)
+
+
     this.initializeRedis()
     this.initializeCron()
+
 
   }
 
@@ -83,6 +89,8 @@ export class App {
 
 
 
+
+
   // await this.redisClient.hgetall('user:active')
   // await this.redisClient.hgetall('user:inactive')
   // await this.redisClient.hgetall('user:all')
@@ -99,6 +107,8 @@ export class App {
   // await this.redisClient.hgetall('user:inactive:count:month')
 
   // await this.redisClient.hgetall('user:all:count:month')
+
+
   private initializeRedis() {
     this.redisClient = new Redis({
       host: REDIS_HOST,
@@ -132,7 +142,7 @@ export class App {
 
   private initializeMiddlewares() {
     // this.app.use(morgan(LOG_FORMAT));
-    this.app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+    this.app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }));
     this.app.use(hpp());
     this.app.use(compression());
     this.app.use(express.json());

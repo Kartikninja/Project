@@ -11,6 +11,8 @@ import SubCategoryRoute from './routes/SubCategory.route';
 import ProductVariantRouter from './routes/ProductVariant.route';
 import OrderRouter from './routes/Order.route';
 import { DiscountRouter } from './routes/Discount.route';
+import { NotificationRoute } from './routes/Notifiaction.route';
+
 
 
 
@@ -22,7 +24,8 @@ new CategoryRoute(),
 new SubCategoryRoute(),
 new ProductVariantRouter(),
 new OrderRouter(),
-new DiscountRouter()
+new DiscountRouter(),
+    // new NotificationRoute()
 ]);
 
 app.listen();
