@@ -8,12 +8,13 @@ export class CategoryController {
 
     public createCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const userId = req.user._id
-            const userRole = req.user.role
+
+            const storeId = req.store._id
+            const userRole = req.store.role
             if (userRole !== 3) {
                 res.status(403).json({ message: 'You are not authorized to create a category' })
             }
-            const categoryData: CategoryInterface = { ...req.body, userId };
+            const categoryData: CategoryInterface = { ...req.body, storeId };
             const newCategory = await this.categoryService.createCategory(categoryData);
             res.status(201).json({ data: newCategory, message: 'Category created successfully' });
         } catch (error) {

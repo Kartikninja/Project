@@ -12,7 +12,7 @@ export class CategoryService {
         if (checkName) {
             throw new HttpException(404, 'Category name already exists')
         }
-        const checkStore = await StoreModel.findOne({ _id: categoryData.storeId, userId: categoryData.userId, status: 'approved', isActive: true })
+        const checkStore = await StoreModel.findOne({ _id: categoryData.storeId, status: 'approved', isActive: true })
         if (!checkStore) {
             throw new HttpException(404, 'Store not found')
         }

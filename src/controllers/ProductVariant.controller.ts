@@ -8,13 +8,13 @@ export class ProductVariantController {
 
     public createProductVariant = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const { _id: userId, role } = req.user;
+            const { _id: storeId, role } = req.store;
             if (role !== 3) {
                 res.status(403).json({ message: 'You are not authorized to create a product variant' });
             }
 
             const productVariantData = req.body;
-            const newProductVariant = await this.productVariantService.createProductVariant(userId, productVariantData);
+            const newProductVariant = await this.productVariantService.createProductVariant(storeId, productVariantData);
             res.status(201).json({ data: newProductVariant, message: 'Product variant created successfully' });
         } catch (error) {
             next(error);

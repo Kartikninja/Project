@@ -5,19 +5,19 @@ import cors from 'cors';
 import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import hpp from 'hpp';
-import morgan from 'morgan';
 import { connect, set } from 'mongoose';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { NODE_ENV, PORT, LOG_FORMAT, REDIS_HOST, REDIS_PORT } from '@config';
 import { dbConnection } from '@database';
 import { Routes } from '@interfaces/routes.interface';
-import { createServer } from 'https';
+import { createServer, Server as HTTPServer } from 'http';
 import { Logger } from './utils/logger';
 import { ErrorMiddleware } from './middlewares/error.middleware';
 import Redis, { Redis as RedisClient } from 'ioredis'
 import { cron1 } from './utils/corn/node-corn';
 import { initializeSocket } from './utils/socket/socket';
+import { Server } from 'socket.io';
 
 export class App {
   // private initializeErrorHandling() {
@@ -35,9 +35,9 @@ export class App {
   public port: string | number;
   public server: any;
   public http: any;
-  public httpServer: any;
+  public httpServer: HTTPServer;
   private redisClient: RedisClient | null = null;
-  private io: any;
+  private io: Server;
 
 
 
@@ -54,10 +54,7 @@ export class App {
     this.initializeRoutes(routes);
     this.initializeSwagger();
     this.initializeErrorHandling();
-
-
-    initializeSocket(this.httpServer)
-
+    this.initializeSocket();
 
     this.initializeRedis()
     this.initializeCron()
@@ -67,7 +64,7 @@ export class App {
 
   public async listen() {
     await new Promise((resolve, reject) => {
-      this.http.listen(this.port, () => {
+      this.httpServer.listen(this.port, () => {
         console.log(`==========================================`);
         console.log(`========== ENV: ${this.env} ==============`);
         Logger.info(`=== 🚀 App listening on the port ${this.port} ===`);
@@ -87,26 +84,12 @@ export class App {
   }
 
 
+  private async initializeSocket() {
 
+    await initializeSocket(this.httpServer)
 
+  }
 
-
-  // await this.redisClient.hgetall('user:active')
-  // await this.redisClient.hgetall('user:inactive')
-  // await this.redisClient.hgetall('user:all')
-  // await this.redisClient.hgetall('user:active:count')
-  // await this.redisClient.hgetall('user:inactive:count')
-  // await this.redisClient.hgetall('user:all:count')
-  // await this.redisClient.hgetall('user:active:count:today')
-  // await this.redisClient.hgetall('user:inactive:count:today')
-  // await this.redisClient.hgetall('user:all:count:today')
-  // await this.redisClient.hgetall('user:active:count:week')
-  // await this.redisClient.hgetall('user:inactive:count:week')
-  // await this.redisClient.hgetall('user:all:count:week')
-  // await this.redisClient.hgetall('user:active:count:month')
-  // await this.redisClient.hgetall('user:inactive:count:month')
-
-  // await this.redisClient.hgetall('user:all:count:month')
 
 
   private initializeRedis() {
@@ -141,8 +124,8 @@ export class App {
   }
 
   private initializeMiddlewares() {
-    // this.app.use(morgan(LOG_FORMAT));
-    this.app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }));
+
+    this.app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true, allowedHeaders: ['Content-Type', 'Authorization'] }));
     this.app.use(hpp());
     this.app.use(compression());
     this.app.use(express.json());

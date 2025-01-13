@@ -98,7 +98,7 @@ class OrderService {
 
             await this.notification.sendAdminNotification(
                 'Store',
-                orderId,
+                order.id,
                 `New Order Received from ${user.fullName}`,
                 'success',
                 'Store'
@@ -106,7 +106,6 @@ class OrderService {
 
 
             const io = this.notification.getIO()
-
             if (io) {
                 try {
                     io.to(`store_${storeId}`).emit('notification', {

@@ -31,12 +31,7 @@ export class NotificationService {
             isRead: false
         };
 
-        console.log('\n=== Creating Notification ===');
-        console.log(`UserId: ${notificationData.userId}`);
-        console.log(`StoreId: ${notificationData.storeId}`);
-
         try {
-            // Save the notification to the database
             await NotificationModel.create(notificationData);
             console.log(`Notification saved to database: ${message}`);
 
@@ -54,8 +49,9 @@ export class NotificationService {
             console.log('Type:', data.type);
             console.log('Message:', data.message);
             const notification = await NotificationModel.create(data);
-            const room = `user_${data.userId}`
+            const room = data.modelName === 'Store' ? `store_${data.storeId}` : `user_${data.userId}`;
             const io = this.getIO()
+            io.to(room).emit('notification', notification);
             console.log("room", room)
             if (data.modelName === 'User') {
                 this.io.to(data.userId.toString()).emit('notification', notification);

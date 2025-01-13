@@ -11,12 +11,12 @@ import { HttpException } from '@/exceptions/httpException';
 import razorpay from 'razorpay';
 import { PaymentModel } from '@/models/Payment.model';
 import { SubscriptionModel } from '@/models/Subscription.model';
-
+import { Product } from '@/models/Product.model';
 
 
 export const razorpayInstance = new razorpay({
-    key_secret: "lFyT6jiqYGP9YKarQS5zYti2",
-    key_id: "rzp_test_4GLQncw9smRzS3"
+    key_secret: "LHne19LML33mbPUkXTXRT8lg",
+    key_id: "rzp_test_YqGZbzQiL08W1B"
 })
 
 export class PaymentController {
@@ -41,23 +41,18 @@ export class PaymentController {
     public async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
         console.log('Request Body:', req.body);
         const { razorpayPaymentId, razorpayOrderId, razorpaySignature, modelName } = req.body;
-        console.log('razorpay_payment_id:', razorpayPaymentId);
-        console.log('razorpayOrderId:', razorpayOrderId);
-        console.log('razorpaySignature:', razorpaySignature);
 
         const body = razorpayOrderId + '|' + razorpayPaymentId;
 
-        const secretKey = 'lFyT6jiqYGP9YKarQS5zYti2';
+        const secretKey = 'LHne19LML33mbPUkXTXRT8lg';
         const generatedSignature = crypto
             .createHmac('sha256', secretKey)
             .update(body)
             .digest('hex');
 
-        console.log('Generated Signature:', generatedSignature);
-        console.log('Received Signature:', razorpaySignature);
 
         if (generatedSignature !== razorpaySignature) {
-            console.log('Signature mismatch');
+
             throw new HttpException(400, 'Invalid signature');
         }
 
@@ -88,10 +83,30 @@ export class PaymentController {
                         { new: true }
                     );
 
+
+                    for (const product of updatedOrder.products) {
+                        const { productId, productVariantId, quantity } = product
+
+                        const updateProductVarinatQuantity = await ProductVariant.findById(productVariantId)
+                        updateProductVarinatQuantity.stockLeft -= quantity
+                        await updateProductVarinatQuantity.save()
+
+                        const updateProductQuantity = await Product.findById(productId)
+                        updateProductQuantity.stockLeft -= quantity
+                        await updateProductQuantity.save()
+
+                    }
+
+
                     if (!updatedOrder) {
                         console.error('Order not found for transactionId:', razorpayOrderId);
                         throw new HttpException(404, 'Order record not found');
                     }
+
+
+
+
+
                     console.log("Order status Update successfull")
                     return res.status(200).json({ message: 'Order Payment verified successfully', updatedOrder })
 

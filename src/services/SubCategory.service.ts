@@ -6,17 +6,17 @@ import { Service } from 'typedi';
 
 @Service()
 class SubCategoryService {
-    public async createSubCategory(userId: string, subCategoryData: any): Promise<any> {
+    public async createSubCategory(storeId: string, subCategoryData: any): Promise<any> {
         const checkName = await SubCategory.findOne({ name: subCategoryData.name })
         if (checkName) {
             throw new HttpException(404, 'SubCategory Name Already Exit')
         }
-        const checkCategory = await Category.findOne({ _id: subCategoryData.categoryId, userId: userId })
+        const checkCategory = await Category.findOne({ _id: subCategoryData.categoryId, storeId: storeId })
         if (!checkCategory) {
             throw new HttpException(404, 'Category Not Found with this user')
         }
 
-        const subCategory = await SubCategory.create({ ...subCategoryData, userId });
+        const subCategory = await SubCategory.create({ ...subCategoryData, storeId });
         return subCategory;
     }
 

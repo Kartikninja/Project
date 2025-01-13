@@ -1,6 +1,6 @@
 import { StoreController } from "@/controllers/Store.controller";
 import { Routes } from "@/interfaces/routes.interface";
-import { AuthMiddleware, AuthMiddlewareStore } from "@/middlewares/auth.middleware";
+import { AuthMiddlewareStore } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 
 export class StoreRoute implements Routes {
@@ -26,7 +26,7 @@ export class StoreRoute implements Routes {
         this.router.get(`${this.path}/getAll`, this.store.getAll)
         this.router.get(`${this.path}/:id`, this.store.getById)
         this.router.delete(`${this.path}/:id`, this.store.delete)
-        this.router.put(`${this.path}/approve/:storeId`, AuthMiddleware, this.store.approveStore);
+        this.router.put(`${this.path}/approve/:storeId`, AuthMiddlewareStore, this.store.approveStore);
 
 
         this.router.get(`${this.path}/nearBy/Location`, this.store.getNearbyStores)

@@ -5,8 +5,8 @@ import { HttpException } from '@exceptions/httpException';
 import Razorpay from 'razorpay';
 
 const razorpayInstance = new Razorpay({
-    key_secret: "lFyT6jiqYGP9YKarQS5zYti2",
-    key_id: "rzp_test_4GLQncw9smRzS3"
+    key_secret: "LHne19LML33mbPUkXTXRT8lg",
+    key_id: "rzp_test_YqGZbzQiL08W1B"
 })
 
 @Service()
@@ -34,7 +34,6 @@ export class PaymentService {
                 createdAt: new Date(),
             };
             const newPayment = await this.createPayment(paymentData);
-            console.log("CreateRazorPayOrder Succes")
             return newPayment;
 
 
