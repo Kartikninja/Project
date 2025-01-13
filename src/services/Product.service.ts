@@ -10,16 +10,15 @@ import { Category } from '@/models/Category.model';
 @Service()
 class ProductService {
 
-    public async createProduct(userId: string, productData: ProductInterface): Promise<ProductInterface> {
+    public async createProduct(storeId: string, productData: ProductInterface): Promise<ProductInterface> {
 
 
-        const checkStore = await StoreModel.findOne({ _id: productData.storeId, userId: userId, isActive: true, status: 'approved' })
-        console.log("checkStore", checkStore)
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' })
         if (!checkStore) {
             throw new HttpException(400, 'Invalid storeId or you are not authorized to manage this store');
         }
 
-        const checkSubCategory = await SubCategory.findOne({ _id: productData.subCategoryId, userId })
+        const checkSubCategory = await SubCategory.findOne({ _id: productData.subCategoryId })
         if (!checkSubCategory) {
             throw new HttpException(400, 'Invalid subCategoryId')
         }
@@ -28,7 +27,7 @@ class ProductService {
         if (checkName.length > 0) {
             throw new HttpException(400, 'Product name already exists');
         }
-        const newProduct = await Product.create({ ...productData, userId });
+        const newProduct = await Product.create({ ...productData, storeId });
         return newProduct;
     }
 

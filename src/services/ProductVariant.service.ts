@@ -10,7 +10,7 @@ import { StoreModel } from '@/models/Store.model';
 
 @Service()
 export class ProductVariantService {
-    public async createProductVariant(userId: string, productVariantData: any) {
+    public async createProductVariant(storeId: string, productVariantData: any) {
         const { productId, attributes } = productVariantData
         if (!attributes || (!attributes.size && !attributes.color && !attributes.material)) {
             throw new HttpException(400, 'At least one of size, color, or material must be provided');
@@ -22,17 +22,17 @@ export class ProductVariantService {
             throw new HttpException(400, 'This Variant already exists');
         }
 
-        const checkProduct = await Product.findOne({ _id: productVariantData.productId, userId: userId, storeId: productVariantData.storeId })
+        const checkProduct = await Product.findOne({ _id: productVariantData.productId, storeId: storeId })
         if (!checkProduct) {
             throw new HttpException(404, 'Product not found')
         }
 
-        const checkStore = await StoreModel.findOne({ _id: productVariantData.storeId, userId: userId, isActive: true, status: 'approved' })
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' })
         if (!checkStore) {
             throw new HttpException(404, 'Store not found')
         }
 
-        const newProductVariant = await ProductVariant.create({ ...productVariantData, userId });
+        const newProductVariant = await ProductVariant.create({ ...productVariantData, storeId });
         return newProductVariant;
     }
 

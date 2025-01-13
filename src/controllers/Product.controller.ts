@@ -7,13 +7,13 @@ class ProductController {
 
     public createProduct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const { _id: userId, role } = req.user
+            const { _id: storeId, role } = req.store
             if (role !== 3) {
                 res.status(403).json({ message: 'You are not authorized to create a product' })
             }
-            console.log("req.user", req.user)
+            console.log("req.store", req.store)
             const productData = req.body;
-            const newProduct = await this.productService.createProduct(userId, productData);
+            const newProduct = await this.productService.createProduct(storeId, productData);
             res.status(201).json({ data: newProduct, message: 'Product created successfully' });
         } catch (error) {
             next(error);

@@ -7,13 +7,13 @@ class SubCategoryController {
 
     public createSubCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const { _id: userId, role } = req.user;
+            const { _id: storeId, role } = req.store;
             if (role !== 3) {
                 res.status(403).json({ message: 'Only store owners can add subcategories' });
             }
 
             const subCategoryData = req.body;
-            const newSubCategory = await this.subCategoryService.createSubCategory(userId, subCategoryData);
+            const newSubCategory = await this.subCategoryService.createSubCategory(storeId, subCategoryData);
             res.status(201).json({ data: newSubCategory, message: 'SubCategory created successfully' });
         } catch (error) {
             next(error);

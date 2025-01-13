@@ -1,4 +1,4 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 export interface Verification {
   token: String;
@@ -15,7 +15,7 @@ interface Location {
 
 // Creat User Interface based on User Schema
 export interface User {
-  _id?: string;
+  _id: string;
   email: string;
   password?: string;
   fullName: string;

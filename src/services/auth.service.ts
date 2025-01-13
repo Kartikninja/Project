@@ -42,7 +42,7 @@ export class AuthService {
   private notificationService = Container.get(NotificationService)
 
   public async signup(userData: User): Promise<{ user: User, token: string }> {
-    console.log("userData", userData)
+
     const findUser: User = await UserModel.findOne({ email: userData.email, isActive: true });
 
     if (findUser) throw new HttpException(409, `This email ${userData.email} already exists`)
@@ -66,16 +66,26 @@ export class AuthService {
       const tokenData = await createToken(createUserData).token;
       await this.notificationService.sendAdminNotification('User', createUserData._id, `New user signed up: ${userData.fullName}`, 'success',
         'Admin')
+
+      // socket.emit('send-notification', {
+      //   userId: createUserData._id,
+      //   message: `New user signed up: ${userData.fullName}`,
+      //   modelName: 'User',
+      //   id: createUserData._id,
+      //   type: 'success',
+      //   createdBy: 'Admin'
+      // });
+
       const io = this.notificationService.getIO();
       if (io) {
         try {
 
-          io.to('admin_room').emit('notification', {
+          io.to('admin-room').emit('notification', {
             message: `New user signed up: ${userData.fullName}`,
             userId: createUserData._id,
             type: 'user-signup'
           });
-          console.log('Notification emitted to admin room');
+          console.log(`Admin Notified fro new User ${createUserData._id}`);
         } catch (error) {
           console.error('Error emitting notification to admin:', error);
         }
@@ -175,7 +185,8 @@ export class AuthService {
   }
 
   public async forgotPassword(userData: User): Promise<User> {
-    const user: User = await UserModel.findOne({ ...userData, isActive: true });
+    const { email, isActive } = userData;
+    const user = await UserModel.findOne({ email, isActive });
     if (!user) throw new HttpException(409, "User doesn't exist");
     const token = await createToken(user).token;
     user.token = token

@@ -83,7 +83,7 @@ export class StoreService {
             const io = this.notificationService.getIO();
             if (io) {
                 try {
-                    io.to('admin-room').emit('notification', {
+                    io.to('admin-store-room').emit('notification', {
                         message: adminMessage,
                         storeId: createStoreData._id,
                         type: 'new-store',

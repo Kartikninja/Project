@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CategoryController } from '@controllers/Category.controller';
-import { AuthMiddleware } from '@/middlewares/auth.middleware';
+import { AuthMiddleware, AuthMiddlewareStore } from '@/middlewares/auth.middleware';
 
 class CategoryRoute {
     public path = '/categories';
@@ -12,7 +12,7 @@ class CategoryRoute {
     }
 
     private initializeRoutes() {
-        this.router.post(`${this.path}`, AuthMiddleware, this.categoryController.createCategory);
+        this.router.post(`${this.path}`, AuthMiddlewareStore, this.categoryController.createCategory);
         this.router.get(`${this.path}`, this.categoryController.getAllCategories);
         this.router.get(`${this.path}/:id`, this.categoryController.getCategoryById);
         this.router.put(`${this.path}/:id`, this.categoryController.updateCategory);

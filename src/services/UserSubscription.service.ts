@@ -7,6 +7,7 @@ import { SUBSCRIPTIONS_TYPES } from "@/utils/constant";
 import Container, { Service } from "typedi";
 import { PaymentService } from "./Paymnet.Service";
 import { PaymentModel } from "@/models/Payment.model";
+import { NotificationService } from "./Notification.service";
 
 
 
@@ -15,13 +16,14 @@ import { PaymentModel } from "@/models/Payment.model";
 export class UserSubscriptionService {
 
     private payment = Container.get(PaymentService)
+    private notification = Container.get(NotificationService)
+
 
     public async addSubscription(userId: string, subscriptionId: string, startDate: Date, isAutoRenew: boolean) {
 
 
         const checkSub = await SubscriptionModel.findById({ _id: subscriptionId })
-        console.log("checkSub", checkSub)
-        console.log("checkSub.isActive", checkSub.isActive)
+
         if (!checkSub || checkSub.isActive === false) {
             throw new HttpException(409, 'Subscription not found')
         }
@@ -38,8 +40,7 @@ export class UserSubscriptionService {
         }
 
         const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
-        console.log("newPayment", newPayment)
-        console.log("newPayment.transactionId", newPayment.transactionId)
+
         const startDateSelect = startDate || new Date();
         console.log("Start Date:", startDateSelect);
         const endDate = new Date(startDateSelect)
@@ -57,23 +58,45 @@ export class UserSubscriptionService {
             transactionId: newPayment.transactionId,
 
         };
-
         const newUserSubscription = new UserSubscriptionModel(userSubscriptionData);
+
         const savedSubscription = await newUserSubscription.save();
         await UserModel.findByIdAndUpdate(userId, { $push: { subscription: newUserSubscription._id } })
+        await this.notification.sendAdminNotification(
+            'SubScription',
+            newUserSubscription.id,
+            `New Subscription purches ${newUserSubscription.userId}`,
+            'Success',
+            'SubScription'
+        )
+
+        const io = this.notification.getIO()
+        if (io) {
+            try {
+                io.to(`subScription_${subscriptionId}`).emit('notification', {
+                    message: `New SubScription Purches ${newUserSubscription.userId}`,
+                    subscriptionId: newUserSubscription.id,
+                    userId: newUserSubscription.userId,
+                    type: 'new-Subscription'
+                })
+                console.log(`Notification sent to store ${subscriptionId}`);
+
+            } catch (err) {
+                console.log(`Error in subScription emmiting notification `, err)
+            }
+        }
+
         return { subscription: savedSubscription, paymentDetails: newPayment };
     };
 
     public async activateUserSubscription(transactionId: string): Promise<void> {
         try {
-            // Find the payment with the given transactionId
             const payment = await PaymentModel.findOne({ transactionId });
 
             if (!payment) {
                 throw new Error('Payment not found');
             }
 
-            // Check if the payment was successful
             if (payment.status !== 'paid') {
                 throw new Error('Payment not successful');
             }
@@ -93,7 +116,6 @@ export class UserSubscriptionService {
             userSubscription.isActive = true;
             await userSubscription.save();
 
-            // Optionally, you could update the user model as well
             await UserModel.findByIdAndUpdate(payment.userId, { $push: { subscription: userSubscription._id } });
 
             console.log('Subscription activated successfully!');
