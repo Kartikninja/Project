@@ -3,12 +3,14 @@ import { HttpException } from '@exceptions/httpException';
 import { User } from '@interfaces/users.interface';
 import { UserModel } from '@models/users.model';
 import { hash, compare } from 'bcrypt';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { redisClient } from '../utils/redisClient'
+import { NotificationService } from './Notification.service';
 
 
 @Service()
 export class UserService {
+  private notificationService = Container.get(NotificationService)
   private static cacheKey = 'all_users';
   public async findUserById(userId: string): Promise<User> {
     const findUser: User = await UserModel.findOne({ _id: userId, isActive: true }).lean();
@@ -32,6 +34,13 @@ export class UserService {
     if (profileImage) userData.profileImage = await this.uploadImage(profileImage)
     const updateUserById: User = await UserModel.findByIdAndUpdate(userId, userData, { new: true });
     if (!updateUserById) throw new HttpException(409, "User doesn't exist");
+    const io = await this.notificationService.getIO()
+    io.to('admin-room').emit('updateProfile', {
+      message: `${updateUserById.fullName}'s profile has been updated`,
+      userId: updateUserById._id,
+      type: "Update-Profile"
+
+    })
 
     return updateUserById;
   }
@@ -61,6 +70,12 @@ export class UserService {
   public async deleteUser(userId: string): Promise<Boolean> {
     const deleteUserById: Boolean = await UserModel.findByIdAndDelete(userId);
     if (!deleteUserById) throw new HttpException(409, "User doesn't exist");
+    const io = await this.notificationService.getIO()
+    io.to('admin-room').emit('deleteUser', {
+      message: `User with id ${userId} has been deleted`,
+      userId: userId,
+      type: "Delete-User"
+    })
     return true;
   }
 
