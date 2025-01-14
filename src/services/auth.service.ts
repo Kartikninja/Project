@@ -162,12 +162,39 @@ export class AuthService {
       await UserModel.updateOne({ _id: findUser._id }, { token: tokenData })
       delete findUser.password
       delete findUser.token
+
+      const io = await this.notificationService.getIO()
+      if (io) {
+        try {
+          io.to('admin-room').emit('userLoggedIn', {
+            message: `User logged in with email: ${findUser.email} `,
+            userId: findUser._id,
+            type: 'success',
+          })
+        } catch (err) {
+          console.log(err)
+        }
+      }
+
       return { findUser, tokenData };
     }
   }
 
   public async logout(user: User): Promise<boolean> {
     await UserModel.updateOne({ _id: user._id }, { token: '' })
+    const io = await this.notificationService.getIO()
+    if (io) {
+      try {
+
+        io.to('admin-room').emit("userLoggedOut", {
+          message: `User with ID: ${user._id} has logged out`,
+          userId: user._id,
+          type: 'Logout',
+        });
+      } catch (err) {
+        console.log(err)
+      }
+    }
     return true
   }
 
@@ -196,6 +223,12 @@ export class AuthService {
 
     const link = `${FRONT_END_URL}/reset-password/${token}`;
     await sendForgotPasswordEmail(user.email, user.fullName, link);
+    const io = await this.notificationService.getIO()
+    io.to('admin-room').emit('passwordFogotRequested', {
+      message: `Forgot Password requested for ${email} `,
+      userId: user._id,
+      type: 'Forgot-password'
+    })
     return user;
   }
 
@@ -215,6 +248,15 @@ export class AuthService {
     if (!user) throw new HttpException(409, "User doesn't exist");
     const hashedPassword = await hash(password, 10);
     const updatedUser = await UserModel.findByIdAndUpdate(user._id, { password: hashedPassword });
+    const io = await this.notificationService.getIO()
+    io.to('admin-room').emit('passwordResetRequested', {
+      message: `Password reset requested for ${userData.email}`,
+      userId: user.id,
+      type: "Reset-password"
+    }
+
+    )
+
     return updatedUser;
   }
 }

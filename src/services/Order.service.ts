@@ -99,7 +99,7 @@ class OrderService {
             await this.notification.sendAdminNotification(
                 'Store',
                 order.id,
-                `New Order Received from ${user.fullName}`,
+                `New Order Received from ${user.fullName}`,     
                 'success',
                 'Store'
             )

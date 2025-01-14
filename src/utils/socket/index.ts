@@ -43,7 +43,7 @@ export const socketController = (socket: Socket, io: Server) => {
       socket.join('admin-room');
       console.log("New user signup data:", userData);
 
-      io.to('admin_room').emit('admin-notification', {
+      io.to('admin-room').emit('kk', {
         message: `New user signed up: ${userData.fullName}`,
         user: userData,
       });
@@ -52,28 +52,112 @@ export const socketController = (socket: Socket, io: Server) => {
     }
   });
 
-  // socket.on('send-notification', async (notificationData) => {
-  //   try {
-  //     console.log('send-notification', notificationData);
-  //     const notificationResponse = await notification.sendAdminNotification(
-  //       notificationData.modelName,
-  //       notificationData.id,
-  //       notificationData.message,
-  //       notificationData.type,
-  //       notificationData.createdBy
-  //     );
-  //     const room = notificationData.userId
-  //       ? `user_${notificationData.userId}`
-  //       : notificationData.storeId
-  //         ? `store_${notificationData.storeId}`
-  //         : 'admin_room';
+  socket.on("userLoggedIn", (data) => {
+    try {
+      console.log("User logged in:", data);
 
-  //     io.to(room).emit('notification', notificationData);
-  //     console.log(`Notification sent to room: ${room}`);
-  //   } catch (error) {
-  //     console.error('Error sending notification:', error);
-  //   }
-  // });
+      socket.join('admin-room');
+
+      io.to('admin-room').emit('notification', {
+        message: data.message,
+        userId: data.userId,
+        type: data.type,
+      });
+
+    } catch (error) {
+      console.error("Error in 'userLoggedIn' event:", error);
+    }
+  });
+
+
+  socket.on("userLoggedOut", (data) => {
+    try {
+      console.log("User userLoggedOut:", data);
+
+      socket.join('admin-room');
+
+      io.to('admin-room').emit('notification', {
+        message: data.message,
+        userId: data.userId,
+        type: data.type,
+      });
+
+    } catch (error) {
+      console.error("Error in 'userLoggedOut' event:", error);
+    }
+  });
+
+
+  socket.on("passwordFogotRequested", (data) => {
+    try {
+      console.log("User passwordFogotRequested:", data);
+
+      socket.join('admin-room');
+
+      io.to('admin-room').emit('notification', {
+        message: data.message,
+        userId: data.userId,
+        type: data.type,
+      });
+
+    } catch (error) {
+      console.error("Error in 'passwordFogotRequested' event:", error);
+    }
+  });
+
+
+
+  socket.on("passwordResetRequested", (data) => {
+    try {
+      console.log("User passwordResetRequested:", data);
+
+      socket.join('admin-room');
+
+      io.to('admin-room').emit('notification', {
+        message: data.message,
+        userId: data.userId,
+        type: data.type,
+      });
+
+    } catch (error) {
+      console.error("Error in 'passwordResetRequested' event:", error);
+    }
+  });
+
+
+  socket.on("deleteUser", (data) => {
+    try {
+      console.log("User deleteUser:", data);
+
+      socket.join('admin-room');
+
+      io.to('admin-room').emit('notification', {
+        message: data.message,
+        userId: data.userId,
+        type: data.type,
+      });
+
+    } catch (error) {
+      console.error("Error in 'deleteUser' event:", error);
+    }
+  });
+
+  socket.on("updateProfile", (data) => {
+    try {
+      console.log("User updateProfile:", data);
+
+      socket.join('admin-room');
+
+      io.to('admin-room').emit('notification', {
+        message: data.message,
+        userId: data.userId,
+        type: data.type,
+      });
+
+    } catch (error) {
+      console.error("Error in 'updateProfile' event:", error);
+    }
+  });
 
   socket.on('getNotification', async function (data) {
     console.log('getNotification');
@@ -87,3 +171,29 @@ export const socketController = (socket: Socket, io: Server) => {
     console.log('Admin socket disconnected:', socket.id);
   });
 };
+
+
+
+
+// socket.on('send-notification', async (notificationData) => {
+//   try {
+//     console.log('send-notification', notificationData);
+//     const notificationResponse = await notification.sendAdminNotification(
+//       notificationData.modelName,
+//       notificationData.id,
+//       notificationData.message,
+//       notificationData.type,
+//       notificationData.createdBy
+//     );
+//     const room = notificationData.userId
+//       ? `user_${notificationData.userId}`
+//       : notificationData.storeId
+//         ? `store_${notificationData.storeId}`
+//         : 'admin_room';
+
+//     io.to(room).emit('notification', notificationData);
+//     console.log(`Notification sent to room: ${room}`);
+//   } catch (error) {
+//     console.error('Error sending notification:', error);
+//   }
+// });
