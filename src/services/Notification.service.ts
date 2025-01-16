@@ -20,16 +20,29 @@ export class NotificationService {
         }
         return this.io;
     }
-    public async sendAdminNotification(modelName: string, id: string, message: string, type: string, createdBy: string) {
+    public async sendAdminNotification(modelName: string,
+        message: string,
+        type: string,
+        createdBy: string,
+        userId?: string,
+        storeId?: string,
+        orderId?: string,
+        usersubScriptionId?: string,
+        subScriptionId?: string
+    ) {
         const notificationData = {
             modelName,
-            userId: modelName === 'User' ? id : null,
-            storeId: modelName === 'Store' ? id : null,
+            userId,
+            storeId,
+            orderId,
+            usersubScriptionId: usersubScriptionId,
+            subScriptionId,
             message,
             type,
             createdBy,
             isRead: false
         };
+        console.log('Notification data:', notificationData);
 
         try {
             await NotificationModel.create(notificationData);

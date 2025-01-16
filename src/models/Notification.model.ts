@@ -5,7 +5,7 @@ const NotificationSchema: Schema = new Schema(
     {
         modelName: {
             type: String,
-            enum: ['User', 'Store'],
+            enum: ['User', 'Store', 'Order', 'UserSubscription', 'Subscription'],
             required: true,
         },
         userId: {
@@ -13,6 +13,22 @@ const NotificationSchema: Schema = new Schema(
             ref: 'User',
             required: function () {
                 return this.modelName === 'User';
+            },
+
+        },
+        usersubScriptionId: {
+            type: Schema.Types.ObjectId,
+            ref: 'UserSubscription',
+            required: function () {
+                return this.modelName === 'UserSubscription';
+            },
+        },
+
+        subScriptionId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Subscription',
+            required: function () {
+                return this.modelName === 'Subscription';
             },
         },
         storeId: {
@@ -22,13 +38,21 @@ const NotificationSchema: Schema = new Schema(
                 return this.modelName === 'Store';
             },
         },
+        orderId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Order',
+            required: function () {
+                return this.modelName === 'Order'
+            }
+
+        },
         message: {
             type: String,
-            required: true,
+            required: false,
         },
         type: {
             type: String,
-            enum: ['info', 'success', 'warning', 'error'],
+            enum: ['User-Buy-subscription', 'user-registered', 'user-login', 'admin-notification', 'new-order', 'order-updated', 'User-Forgot-password', "User-Reset-password", 'User-Update-Profile', "Delete-User"],
             default: 'info',
         },
         isRead: {

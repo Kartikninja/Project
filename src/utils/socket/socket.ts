@@ -11,8 +11,11 @@ export function initializeSocket(httpServer: any) {
             methods: ['GET', 'POST'],
             credentials: true,
             allowedHeaders: ['Content-Type'],
+
         },
         transports: ['polling', 'websocket'],
+        allowEIO3: true,
+
 
     });
     console.log('Connected Socket')
