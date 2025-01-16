@@ -61,30 +61,36 @@ export class UserSubscriptionService {
         const newUserSubscription = new UserSubscriptionModel(userSubscriptionData);
 
         const savedSubscription = await newUserSubscription.save();
+
         await UserModel.findByIdAndUpdate(userId, { $push: { subscription: newUserSubscription._id } })
-        await this.notification.sendAdminNotification(
-            'SubScription',
-            newUserSubscription.id,
-            `New Subscription purches ${newUserSubscription.userId}`,
-            'Success',
-            'SubScription'
-        )
 
         const io = this.notification.getIO()
         if (io) {
             try {
                 io.to(`subScription_${subscriptionId}`).emit('notification', {
-                    message: `New SubScription Purches ${newUserSubscription.userId}`,
-                    subscriptionId: newUserSubscription.id,
-                    userId: newUserSubscription.userId,
-                    type: 'new-Subscription'
+                    modelName: 'UserSubscription',
+                    userSubscriptionId: newUserSubscription.id,
+                    message: `New SubScription Purchase ${newUserSubscription.userId}`,
+                    type: 'User-Buy-subscription',
+                    createdBy: 'User'
                 })
-                console.log(`Notification sent to store ${subscriptionId}`);
+                console.log(`Notification sent to SubScription ${subscriptionId}`);
 
             } catch (err) {
                 console.log(`Error in subScription emmiting notification `, err)
             }
         }
+        await this.notification.sendAdminNotification(
+            'UserSubscription',
+            `New Subscription purches ${newUserSubscription.userId}`,
+            'User-Buy-subscription',
+            'System',
+            newUserSubscription.userId,
+            undefined,
+            undefined,
+            newUserSubscription.id,
+            subscriptionId,
+        )
 
         return { subscription: savedSubscription, paymentDetails: newPayment };
     };

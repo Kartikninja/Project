@@ -72,21 +72,16 @@ export class StoreService {
                 throw new HttpException(500, 'Failed to send OTP email');
             }
             const tokenData = await createToken(createStoreData).token
-            const adminMessage = `New Store Created: ${createStoreData.storeName}`;
-            await this.notificationService.sendAdminNotification(
-                'Store',
-                createStoreData._id,
-                adminMessage,
-                'success',
-                'Admin'
-            );
+
             const io = this.notificationService.getIO();
             if (io) {
                 try {
-                    io.to('admin-store-room').emit('notification', {
-                        message: adminMessage,
-                        storeId: createStoreData._id,
-                        type: 'new-store',
+                    io.to('store-admin-room').emit('notification', {
+                        modelName: 'Store',
+                        id: createStoreData._id,
+                        message: `New Store Created: ${createStoreData.storeName}`,
+                        type: 'new-store-registred',
+                        createdBy: 'Store'
                     });
                     console.log(`Admin notified of new store: ${createStoreData.storeName}`);
                 } catch (error) {
@@ -142,6 +137,21 @@ export class StoreService {
         if (!data) throw new HttpException(409, `Invalid Password`);
         else {
             const tokenData = await createToken(findUser).token;
+            const io = this.notificationService.getIO();
+            if (io) {
+                try {
+                    io.to('store-admin-room').emit('notification', {
+                        modelName: 'Store',
+                        id: findUser._id,
+                        message: `Store Login: ${findUser.storeName}`,
+                        type: 'store-Login',
+                        createdBy: 'Store'
+                    });
+                    console.log(`Admin notified of new store: ${findUser.storeName}`);
+                } catch (error) {
+                    console.error('Error emitting notification to admin:', error);
+                }
+            }
             await StoreModel.updateOne({ _id: findUser._id }, { token: tokenData })
             delete findUser.password
             delete findUser.token
@@ -162,6 +172,21 @@ export class StoreService {
         await store.save()
         const link = `${FRONT_END_URL}/reset-password/${token}`
         await sendForgotPasswordEmail(store.email, store.fullName, link)
+        const io = this.notificationService.getIO();
+        if (io) {
+            try {
+                io.to('store-admin-room').emit('notification', {
+                    modelName: 'Store',
+                    id: store._id,
+                    message: `Forgot Password requested for ${store.email}`,
+                    type: 'Forgot-Password-requested',
+                    createdBy: 'Store'
+                });
+                console.log(`Admin notified of new store: ${store.storeName}`);
+            } catch (error) {
+                console.error('Error emitting notification to admin:', error);
+            }
+        }
         return store
 
     }
@@ -181,6 +206,15 @@ export class StoreService {
         if (!store) throw new HttpException(409, "Store doesn't exist");
         const hashedPassword = await hash(password, 10);
         const updatedUser = await StoreModel.findByIdAndUpdate(store._id, { password: hashedPassword }, { new: true });
+        const io = await this.notificationService.getIO()
+        io.to('store-admin-room').emit('notification', {
+            modelName: 'Store',
+            id: store._id,
+            message: `Password reset requested for ${email}`,
+            type: "Reset-password",
+            createdBy: 'Store'
+        }
+        )
         return updatedUser;
     }
 
@@ -215,7 +249,14 @@ export class StoreService {
         );
 
         console.log(`Removed store ${result.storeName} from userModel storesIds`);
-
+        const io = await this.notificationService.getIO()
+        io.to('store-admin-room').emit('notification', {
+            modelName: 'Store',
+            id: id,
+            message: `Delete  requested for ${result.email}`,
+            type: "delet-store",
+            createdBy: 'Store'
+        })
         return result
     }
 
@@ -238,6 +279,14 @@ export class StoreService {
         if (!updatedStore) {
             throw new HttpException(404, "Store not found")
         }
+        const io = await this.notificationService.getIO()
+        io.to('store-admin-room').emit('notification', {
+            modelName: 'Store',
+            id: storeId,
+            message: `Update requested for ${existingData.email}`,
+            type: "update-store",
+            createdBy: 'Store'
+        })
         return updatedStore
     }
 

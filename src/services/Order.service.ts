@@ -96,29 +96,46 @@ class OrderService {
 
 
 
-            await this.notification.sendAdminNotification(
-                'Store',
-                order.id,
-                `New Order Received from ${user.fullName}`,     
-                'success',
-                'Store'
-            )
-
 
             const io = this.notification.getIO()
             if (io) {
                 try {
-                    io.to(`store_${storeId}`).emit('notification', {
-                        message: `New order from ${user.fullName}`,
+                    io.to(`store_${storeId}`).emit('Create-Order', {
+                        modelName: 'Order',
                         orderId: order._id,
-                        userId: userId,
+                        message: `New order from ${user.fullName}`,
                         type: 'new-order',
+                        createdBy: 'User',
+                        storeId: order.storeId,
+                        userId: order.userId
                     });
+
                     console.log(`Notification sent to store ${storeId}`);
+                    io.to('order-admin-room').emit('notification', {
+                        modelName: 'Order',
+                        orderId: order._id,
+                        message: `New order received from ${user.fullName} for store ${store.storeName}`,
+                        type: 'new-order',
+                        createdBy: 'User',
+                        userId: order.userId,
+                        storeId: order.storeId
+
+                    });
+                    console.log('Notification sent to admin-room');
+
                 } catch (error) {
                     console.error('Error emitting notification:', error);
                 }
             }
+            await this.notification.sendAdminNotification(
+                'Order',
+                `New order from ${user.fullName}`,
+                'new-order',
+                'User',
+                userId,
+                storeId,
+                order.id
+            );
             return { order, payment };
         } catch (error) {
             console.error('Error creating order:', error);
@@ -126,6 +143,14 @@ class OrderService {
         }
     }
 
+
+    // io.to('store-admin-room').emit('send-notification', {
+    //     modelName: 'Order',
+    //     id: order._id,
+    //     message: `New order received from ${user.fullName} for store ${store.name}`,
+    //     type: 'new-order',
+    //     createdBy: 'User'
+    // });
     private async getDiscount(params: {
         discountCode?: string;
         storeId: string;

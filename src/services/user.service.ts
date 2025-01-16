@@ -35,12 +35,21 @@ export class UserService {
     const updateUserById: User = await UserModel.findByIdAndUpdate(userId, userData, { new: true });
     if (!updateUserById) throw new HttpException(409, "User doesn't exist");
     const io = await this.notificationService.getIO()
-    io.to('admin-room').emit('updateProfile', {
+    io.to('user-admin-room').emit('nootification', {
+      modelName: 'User',
+      id: updateUserById._id,
       message: `${updateUserById.fullName}'s profile has been updated`,
-      userId: updateUserById._id,
-      type: "Update-Profile"
-
+      type: "Update-Profile",
+      createdBy: 'User'
     })
+
+    await this.notificationService.sendAdminNotification(
+      'User',
+      `${updateUserById.fullName}'s profile has been updated`,
+      'User-Update-Profile',
+      'User',
+      updateUserById._id
+    )
 
     return updateUserById;
   }
@@ -71,11 +80,24 @@ export class UserService {
     const deleteUserById: Boolean = await UserModel.findByIdAndDelete(userId);
     if (!deleteUserById) throw new HttpException(409, "User doesn't exist");
     const io = await this.notificationService.getIO()
-    io.to('admin-room').emit('deleteUser', {
+    io.to('user-admin-room').emit('notification', {
+      modelName: 'User',
       message: `User with id ${userId} has been deleted`,
-      userId: userId,
-      type: "Delete-User"
+      id: userId,
+      type: "Delete-User",
+      createdBy: 'User'
     })
+
+
+
+    await this.notificationService.sendAdminNotification(
+      'User',
+      `User with id ${userId} has been deleted`,
+      "Delete-User",
+      'User',
+      userId
+    )
+
     return true;
   }
 
