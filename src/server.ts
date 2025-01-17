@@ -25,7 +25,7 @@ new SubCategoryRoute(),
 new ProductVariantRouter(),
 new OrderRouter(),
 new DiscountRouter(),
-    // new NotificationRoute()
+    new NotificationRoute()
 ]);
 
 app.listen();

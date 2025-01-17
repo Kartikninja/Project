@@ -13,7 +13,6 @@ interface Location {
   coordinates: [number, number]
 }
 
-// Creat User Interface based on User Schema
 export interface User {
   _id: string;
   email: string;

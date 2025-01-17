@@ -32,7 +32,7 @@ class OrderController {
 
     public getAllOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const { _id: userId } = req.user; // Filter orders for the logged-in user
+            const { _id: userId } = req.user;
             const orders = await this.orderService.getAllOrders(userId);
             res.status(200).json({ data: orders, message: 'Orders retrieved successfully' });
         } catch (error) {

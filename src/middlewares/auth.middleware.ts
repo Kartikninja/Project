@@ -51,7 +51,7 @@ export const AuthMiddlewareStore = async (req: RequestWithUser, res: Response, n
     const Authorization = getAuthorization(req);
     if (Authorization) {
       const { _id, role } = (await verify(Authorization, SECRET_KEY)) as DataStoredInToken;
-      const findStore = await StoreModel.findById(_id); // Assuming StoreModel is the correct model
+      const findStore = await StoreModel.findById(_id);
       if (!findStore) return res.status(401).json({ message: "Store not found." });
 
       if (!findStore.token) return res.status(401).json({ message: "You are Logged Out" });
