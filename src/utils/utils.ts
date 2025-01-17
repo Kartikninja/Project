@@ -114,7 +114,7 @@ export const uploadToS3 = async (file, folderName = 'user-profile', fileName) =>
   const data = await s3.upload(params).promise();
   console.log("DATA", data)
   return data;
-  // return data.Location; 
+  // return data.Location
 
 };
 
