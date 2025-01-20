@@ -15,7 +15,7 @@ const footerColor = '#b50000';
 const domainName = 'Swipe Lounge';
 const copyrightYear = new Date().getFullYear();
 
-const sendEmail = async (toEmail, subject, templateName, additionalData, attachments = []) => {
+export const sendEmail = async (toEmail, subject, templateName, additionalData, attachments = []) => {
   try {
     const transporter = nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE,
@@ -99,6 +99,124 @@ export const sendOtpEmail = async (email: string, otp: string, name: string) => 
   await sendEmail(email, subject, 'otp', additionalData);
 };
 
+
+
+
+export const sendPurchaseEmail = async (orderDetails: any) => {
+  const subject = 'Your Purchase Confirmation';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending purchase confirmation to email:", orderDetails);
+
+  const additionalData = {
+    customerName: orderDetails.customerName,
+    orderId: orderDetails.orderId,
+    orderDate: orderDetails.orderDate || new Date(),
+    transactionId: orderDetails.transactionId,
+    products: orderDetails.products.map((product: any) => ({
+      productName: product.name,
+      productImage: product.imageUrl,
+      price: product.price,
+      quantity: product.quantity,
+    })),
+    mailTitle: 'Thank you for your purchase!',
+    appName,
+    year,
+  };
+
+  await sendEmail(orderDetails.email, subject, 'purchaseProduct', additionalData);
+};
+
+
+export const sendpurchaseSubscriptionemail = async (details: any) => {
+  const subject = 'Your Subscription Confirmation';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending purchase confirmation to email:", details);
+  const additionalData = {
+    customerName: details.userName,
+    email: details.email,
+    subscriptionId: details.subscriptionDetails.subscriptionId,
+    transactionId: details.subscriptionDetails.transactionId || 'N/A',
+    startDate: details.subscriptionDetails.startDate,
+    endDate: details.subscriptionDetails.endDate,
+    price: details.subscriptionDetails.price,
+    isAutoRenew: details.subscriptionDetails.isAutoRenew ? 'Yes' : 'No', // Convert to readable format
+    mailTitle: 'Thank you for your subscription!',
+    appName,
+    year,
+  };
+  await sendEmail(details.email, subject, 'purchaseSubscription', additionalData);
+}
+
+
+
+export const sendSubscriptionExpiryEmail = async (emailData: any) => {
+  const { userName, email, subscriptionDetails } = emailData;
+  console.log("sendSubScriptionMail data->", emailData)
+  const subject = 'Your Subscription is About to Expire!';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const formattedStartDate = new Date(subscriptionDetails.startDate).toDateString();
+  const formattedEndDate = new Date(subscriptionDetails.endDate).toDateString();
+
+  const additionalData = {
+    customerName: userName,
+    subscriptionId: subscriptionDetails.subscriptionId,
+    startDate: formattedStartDate,
+    endDate: formattedEndDate,
+    price: `${subscriptionDetails.price.toFixed(2)}`,
+    isAutoRenew: subscriptionDetails.isAutoRenew ? 'Enabled' : 'Disabled',
+    mailTitle: 'Subscription Expiry Reminder!',
+    appName,
+    year
+  };
+
+
+  await sendEmail(email, subject, 'subscriptionExpiry', additionalData);
+};
+
+
+export const sendStatusUpdateEmail = async (emailData: any) => {
+  console.log("emailData", emailData)
+
+  const subject = 'Your Order status has been updated';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    userName: emailData.customerName,
+    orderNumber: emailData.orderId,
+    orderStatus: emailData.status,
+    price: emailData.totalPrice,
+    mailTitle: 'Order Status Update',
+    appName,
+    year
+  }
+  await sendEmail(emailData.email, subject, 'OrderStatus', additionalData)
+}
+
+
+export const sendOrderUpdateEmail = async (emailData: any) => {
+  console.log("emailData", emailData)
+  const subject = 'Your Order has been Updated';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    userName: emailData.customerName,
+    orderNumber: emailData.orderId,
+    orderStatus: emailData.status,
+    totalPrice: emailData.totalPrice,
+    updatedFields: emailData.updatedFields,
+    mailTitle: 'Order Update Notification',
+    appName,
+    year,
+  };
+
+  await sendEmail(emailData.email, subject, 'OrderUpdate', additionalData);
+}
 // export const sendVerifyingUserEmail = async (toEmail, name, url) => {
 //   const content = `Please verify your email`;
 //   const subject = 'Request Verify Email';
@@ -131,52 +249,6 @@ export const sendOtpEmail = async (email: string, otp: string, name: string) => 
 //   );
 // };
 
-// export const purchaseProduct = async details => {
-//   ejs.renderFile(
-//     __dirname + '/templates/purchaseProduct.ejs',
-//     {
-//       orderDate: moment(details.orderDate).format('Do MMM YYYY'),
-//       customerName: details.customerName,
-//       productName: details.productName,
-//       price: details.price,
-//       productImage: details.productImage,
-//       transactionId: details.transactionId,
-//       subject: details.subject,
-//       orderId: details.orderId,
-//       mailTitle: details.mailTitle,
-//       email: details.email,
-//       headerColor,
-//       footerColor,
-//       copyrightYear,
-//       domainName,
-//     },
-//     async (err, data) => {
-//       if (err) {
-//         console.log(err);
-//       } else {
-//         const mailOptions = {
-//           from: 'test@projectanddemoserver.com',
-//           to: details.email,
-//           subject: details.subject,
-//           attachments: [
-//             {
-//               filename: 'image.jpg',
-//               path: IMAGE_URL,
-//               cid: 'logoImage',
-//             },
-//             {
-//               filename: 'image.jpg',
-//               path: `${S3_IMAGE_URL}${details.productImage}`,
-//               cid: 'productImage', //same cid value as in the html img src
-//             },
-//           ],
-//           html: data,
-//         };
-//         await sendEmail(mailOptions);
-//       }
-//     },
-//   );
-// };
 
 // export const purchaseProductToAdmin = async details => {
 //   ejs.renderFile(

@@ -1,4 +1,6 @@
-export interface UserSubscription {
+import { Document } from "mongoose";
+
+export interface UserSubscription extends Document {
     userId: string;
     subscriptionId: string;
     startDate: Date;
@@ -10,4 +12,11 @@ export interface UserSubscription {
     expiry: Date | null
     transactionId: string
     paymentStatus: 'paid' | 'unpaid'
+}
+
+
+export interface UserPurchaseSubScription {
+    fullName: string
+    email: string
+
 }

@@ -1,13 +1,14 @@
-import { CreateUserSubscriptionDto } from "@/dtos/UserSubscription .dto";
 import { HttpException } from "@/exceptions/httpException";
 import { SubscriptionModel } from "@/models/Subscription.model";
 import { UserModel } from "@/models/users.model";
 import { UserSubscriptionModel } from "@/models/UserSubscriptionSchema.model";
-import { SUBSCRIPTIONS_TYPES } from "@/utils/constant";
 import Container, { Service } from "typedi";
 import { PaymentService } from "./Paymnet.Service";
 import { PaymentModel } from "@/models/Payment.model";
 import { NotificationService } from "./Notification.service";
+import { sendpurchaseSubscriptionemail, sendSubscriptionExpiryEmail } from "@/utils/mailer";
+import { User } from "@/interfaces/users.interface";
+import { UserPurchaseSubScription, UserSubscription } from "@/interfaces/UserSubscription.interface";
 
 
 
@@ -39,11 +40,11 @@ export class UserSubscriptionService {
             throw new HttpException(409, 'Subscription already exists')
         }
 
-        const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
 
         const startDateSelect = startDate || new Date();
         console.log("Start Date:", startDateSelect);
         const endDate = new Date(startDateSelect)
+        const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
         // endDate.setMonth(endDate.getMonth() + (checkSub.type === 2 ? 1 : 12))
         endDate.setMinutes(endDate.getMinutes() + 2);
         const userSubscriptionData = {
@@ -51,7 +52,7 @@ export class UserSubscriptionService {
             subscriptionId,
             startDate: startDate || new Date(),
             endDate,
-            isActive: true,
+            isActive: false,
             isAutoRenew,
             expiry: endDate,
             price,
@@ -91,6 +92,23 @@ export class UserSubscriptionService {
             newUserSubscription.id,
             subscriptionId,
         )
+
+
+        const populatedUser = await UserModel.findById(userId).select('fullName email');
+        const emailData = {
+            userName: populatedUser?.fullName || 'Valued User',
+            email: populatedUser?.email,
+            subscriptionDetails: {
+                startDate: startDateSelect,
+                endDate: endDate,
+                price,
+                isAutoRenew,
+                subscriptionId,
+            },
+            subscriptionId: subscriptionId
+        };
+
+        await sendpurchaseSubscriptionemail(emailData)
 
         return { subscription: savedSubscription, paymentDetails: newPayment };
     };
@@ -151,17 +169,44 @@ export class UserSubscriptionService {
 
 
     public async checkSubscriptionExpiry() {
+        const currentDate = new Date();
+        const reminderDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
 
-        const currentDate = new Date()
-        const expiredSubscribeption = await UserSubscriptionModel.find({
+
+        const expiringSubscriptions = await UserSubscriptionModel.find({
+            paymentStatus: 'paid',
+            expiry: { $lt: reminderDate },
+            isActive: true
+        }).populate({ path: 'subscriptionId', select: 'price' }).populate('userId')
+        console.log("expiringSubscriptions", expiringSubscriptions)
+        for (const sub of expiringSubscriptions) {
+            const user = sub.userId as UserPurchaseSubScription;
+            console.log("check Suub function", sub)
+            console.log("user check cron", user)
+            console.log("user.fullName", user.fullName)
+            const emailData = {
+                userName: user.fullName,
+                email: user.email,
+                subscriptionDetails: {
+                    startDate: sub.startDate.toDateString(),
+                    endDate: sub.expiry.toDateString(),
+                    price: sub.subscriptionId.price,
+                    isAutoRenew: sub.isAutoRenew ? 'Enabled' : 'Disabled',
+                    subscriptionId: sub.subscriptionId._id
+                }
+            };
+
+            await sendSubscriptionExpiryEmail(emailData);
+        }
+
+        const expiredSubscriptions = await UserSubscriptionModel.find({
             endDate: { $lt: currentDate },
             isActive: true
-        })
+        });
 
-        for (const sub of expiredSubscribeption) {
+        for (const sub of expiredSubscriptions) {
             if (!sub.isAutoRenew) {
-
-                sub.isActive = false
+                sub.isActive = false;
                 sub.startDate = null;
                 sub.endDate = null;
                 sub.expiry = null;
@@ -169,14 +214,13 @@ export class UserSubscriptionService {
                 await UserModel.findByIdAndUpdate(sub.userId, {
                     $pull: { subscription: sub._id },
                 });
-
             } else {
-                sub.isActive = true
-                await sub.save()
+                sub.isActive = true;
+                await sub.save();
             }
         }
-        console.log(`Checked and updated ${expiredSubscribeption.length} expired subscriptions.`);
 
+        console.log(`Checked and updated ${expiredSubscriptions.length} expired subscriptions.`);
     }
 
 

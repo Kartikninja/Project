@@ -1,6 +1,6 @@
 import { DiscountController } from "@/controllers/Discount.controller";
 import { Routes } from "@/interfaces/routes.interface";
-import { AuthMiddleware } from "@/middlewares/auth.middleware";
+import { AuthMiddlewareStore } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 
 export class DiscountRouter implements Routes {
@@ -14,10 +14,10 @@ export class DiscountRouter implements Routes {
         this.intializeRoutes();
     }
     intializeRoutes() {
-        this.router.post(`${this.path}`, AuthMiddleware, this.discount.createDiscount);
+        this.router.post(`${this.path}`, AuthMiddlewareStore, this.discount.createDiscount);
         this.router.get(`${this.path}`, this.discount.getDiscountsByStoreId);
-        this.router.put(`${this.path}/:discountId`, AuthMiddleware, this.discount.updateDiscount);
-        this.router.delete(`${this.path}/:discountId`, AuthMiddleware, this.discount.deleteDiscount);
+        this.router.put(`${this.path}/:discountId`, AuthMiddlewareStore, this.discount.updateDiscount);
+        this.router.delete(`${this.path}/:discountId`, AuthMiddlewareStore, this.discount.deleteDiscount);
 
     }
 

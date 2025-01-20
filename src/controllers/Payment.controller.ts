@@ -115,7 +115,8 @@ export class PaymentController {
 
                     const updatedSubscription = await UserSubscriptionModel.findOneAndUpdate(
                         { transactionId: razorpayOrderId },
-                        { paymentStatus: 'paid' },
+                        { paymentStatus: 'paid', isActive: true },
+
                         { new: true }
                     );
 
