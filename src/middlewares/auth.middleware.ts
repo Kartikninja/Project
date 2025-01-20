@@ -46,6 +46,7 @@ export const AuthMiddleware = async (req: RequestWithUser, res: Response, next: 
     return res.status(401).json({ message: "Invalid or Expired Token" });
   }
 };
+
 export const AuthMiddlewareStore = async (req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
     const Authorization = getAuthorization(req);

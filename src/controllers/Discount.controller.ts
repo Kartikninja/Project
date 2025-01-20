@@ -7,17 +7,13 @@ export class DiscountController {
 
     public createDiscount = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const { storeId, code, discount_type, start_date, end_date, value, Until, isActive, ProductIds, CategoryIds, SubCategoryIds } = req.body;
-            const { _id: userId } = req.user;
-            const userRole = req.user.role;
+            // const { storeId, code, discount_type, start_date, end_date, value, Until, isActive, ProductIds, CategoryIds, SubCategoryIds } = req.body;
+            const { _id: storeId } = req.store;
 
-            if (userRole !== 3) {
-                res.status(403).json({ message: "You don't have permission to create a discount" });
-                return;
-            }
+            console.log("storeId", storeId)
 
             const discountData = req.body;
-            const discount = await this.discount.createDiscount(userId, discountData);
+            const discount = await this.discount.createDiscount(storeId, discountData);
 
             res.status(201).json({ data: discount, message: "Discount added successfully", status: true });
         } catch (error) {

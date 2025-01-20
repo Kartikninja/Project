@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import OrderService from '@services/Order.service';
 import Container from 'typedi';
+import { OrderModel } from '@/models/Order.model';
+import { HttpException } from '@/exceptions/httpException';
+import { StoreModel } from '@/models/Store.model';
+import { ProductVariant } from '@/models/ProductVariant.model';
 
 class OrderController {
     private orderService = Container.get(OrderService);
@@ -49,6 +53,51 @@ class OrderController {
             next(error);
         }
     };
+
+
+
+
+
+
+    public updateOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { _id: userId } = req.user;
+            const { orderId } = req.params;
+            const orderData = req.body;
+
+            const updatedOrder = await this.orderService.updateOrder(userId, orderId, orderData);
+
+            res.status(200).json({ data: updatedOrder, message: 'Order updated successfully' });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+
+
+    public updateOrderStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { orderId, status } = req.body;
+            const userId = req.user._id;
+            const userRole = req.user.role;
+
+            if (userRole !== 1) {
+                res.status(403).json({ message: 'You are not authorized to update order status' });
+            }
+
+
+            const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+            if (!validStatuses.includes(status)) {
+                res.status(400).json({ message: 'Invalid order status' });
+            }
+
+            const updatedOrder = await this.orderService.updateOrderStatus(orderId, status);
+            res.status(200).json({ data: updatedOrder, message: 'Order status updated successfully' });
+        } catch (error) {
+            next(error);
+        }
+    };
+
 }
 
 export default OrderController;
