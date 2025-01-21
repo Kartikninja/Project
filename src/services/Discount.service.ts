@@ -14,7 +14,6 @@ export class DiscountService {
     public async createDiscount(storeId: string, DiscountData: IDiscount) {
         const { ProductIds, CategoryIds, SubCategoryIds } = DiscountData
         const checkStore = await StoreModel.findOne({
-
             _id: storeId,
             isActive: true,
             status: 'approved'

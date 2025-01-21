@@ -25,13 +25,39 @@
             <li>Store: <%= updatedFields.storeId %>
             </li>
             <% } %>
+
                 <% if (updatedFields.shippingAddress) { %>
                     <li>Shipping Address: <%= updatedFields.shippingAddress %>
                     </li>
                     <% } %>
-                        <% if (updatedFields.products) { %>
-                            <li>Products Updated: <%= updatedFields.products.length %> items</li>
+
+                        <% if (updatedFields.orderStatus) { %>
+                            <li>Order Status: <%= updatedFields.orderStatus %>
+                            </li>
                             <% } %>
+
+                                <% if (updatedFields.totalPrice) { %>
+                                    <li>Total Price: <%= updatedFields.totalPrice %>
+                                    </li>
+                                    <% } %>
+
+                                        <% if (updatedFields.products && updatedFields.products.length> 0) { %>
+                                            <li>Updated Products: <%= updatedFields.products.length %> items</li>
+                                            <ul>
+                                                <% updatedFields.products.forEach(function(product) { %>
+                                                    <li>
+                                                        <strong>
+                                                            <%= product.productName %>
+                                                        </strong><br>
+                                                        Quantity: <%= product.quantity %><br>
+                                                            Price: $<%= product.price %><br>
+                                                                <img src="<%= product.productImage %>"
+                                                                    alt="<%= product.productName %>"
+                                                                    style="width: 100px; height: auto;">
+                                                    </li>
+                                                    <% }); %>
+                                            </ul>
+                                            <% } %>
     </ul>
 
     <p><strong>Total Price: <%= totalPrice %></strong></p>

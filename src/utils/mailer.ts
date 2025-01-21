@@ -197,9 +197,9 @@ export const sendStatusUpdateEmail = async (emailData: any) => {
   await sendEmail(emailData.email, subject, 'OrderStatus', additionalData)
 }
 
-
 export const sendOrderUpdateEmail = async (emailData: any) => {
-  console.log("emailData", emailData)
+  console.log("emailData", emailData);
+
   const subject = 'Your Order has been Updated';
   const appName = 'Your Store';
   const year = new Date().getFullYear();
@@ -207,9 +207,10 @@ export const sendOrderUpdateEmail = async (emailData: any) => {
   const additionalData = {
     userName: emailData.customerName,
     orderNumber: emailData.orderId,
-    orderStatus: emailData.status,
-    totalPrice: emailData.totalPrice,
-    updatedFields: emailData.updatedFields,
+    orderStatus: emailData.updatedFields?.orderStatus || 'Not Available',
+    totalPrice: emailData.updatedFields?.totalPrice || 'N/A',
+    shippingAddress: emailData.updatedFields?.shippingAddress || 'N/A',
+    updatedFields: emailData.updatedFields || {},
     mailTitle: 'Order Update Notification',
     appName,
     year,
@@ -217,6 +218,26 @@ export const sendOrderUpdateEmail = async (emailData: any) => {
 
   await sendEmail(emailData.email, subject, 'OrderUpdate', additionalData);
 }
+
+// export const sendOrderUpdateEmail = async (emailData: any) => {
+//   console.log("emailData", emailData)
+//   const subject = 'Your Order has been Updated';
+//   const appName = 'Your Store';
+//   const year = new Date().getFullYear();
+
+//   const additionalData = {
+//     userName: emailData.customerName,
+//     orderNumber: emailData.orderId,
+//     orderStatus: emailData.status,
+//     totalPrice: emailData.totalPrice,
+//     updatedFields: emailData.updatedFields,
+//     mailTitle: 'Order Update Notification',
+//     appName,
+//     year,
+//   };
+
+//   await sendEmail(emailData.email, subject, 'OrderUpdate', additionalData);
+// }
 // export const sendVerifyingUserEmail = async (toEmail, name, url) => {
 //   const content = `Please verify your email`;
 //   const subject = 'Request Verify Email';
