@@ -19,6 +19,7 @@ import { cron1 } from './utils/corn/node-corn';
 import { initializeSocket } from './utils/socket/socket';
 import { Server } from 'socket.io';
 
+
 export class App {
   // private initializeErrorHandling() {
   //   this.app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -125,13 +126,14 @@ export class App {
 
   private initializeMiddlewares() {
 
-    this.app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true, allowedHeaders: ['Content-Type', 'Authorization'] }));
+    this.app.use(cors({ origin: 'http://localhost:5173', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }));
     this.app.use(hpp());
     this.app.use(compression());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.app.use(cookieParser());
     this.app.disable('x-powered-by');
+
 
   }
 
