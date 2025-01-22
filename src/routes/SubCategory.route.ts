@@ -17,6 +17,7 @@ class SubCategoryRoute {
         this.router.delete(`${this.path}/:id`, AuthMiddlewareStore, this.subCategoryController.deleteSubCategory);
         this.router.get(`${this.path}/getAll/category`, this.subCategoryController.getSubCategoriesGroupedByCategory)
 
+        this.router.put(`${this.path}/:id`, AuthMiddlewareStore, this.subCategoryController.updateSubcategory)
     }
 }
 

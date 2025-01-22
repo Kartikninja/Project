@@ -53,6 +53,10 @@ const UserSubscriptionSchema: Schema = new Schema({
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+    price: {
+        type: Number,
+        required: false
     }
 }, { timestamps: true });
 

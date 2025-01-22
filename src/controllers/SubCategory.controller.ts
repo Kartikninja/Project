@@ -31,8 +31,10 @@ class SubCategoryController {
 
     public deleteSubCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
+
             const { id } = req.params;
-            await this.subCategoryService.deleteSubCategory(id);
+            await this.subCategoryService.deleteSubCategory(storeId, id);
             res.status(200).json({ message: 'SubCategory deleted successfully' });
         } catch (error) {
             next(error);
@@ -48,6 +50,19 @@ class SubCategoryController {
         }
     };
 
+
+    public updateSubcategory = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const storeId = req.store._id
+            const { id } = req.params;
+
+            const updatedSubCategory = await this.subCategoryService.updateSubcategory(storeId, id, req.body)
+            res.status(200).json({ data: updatedSubCategory, message: 'SubCategory updated' })
+
+        } catch (err) {
+            next(err)
+        }
+    }
 
 
 }

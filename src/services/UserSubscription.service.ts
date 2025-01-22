@@ -23,26 +23,23 @@ export class UserSubscriptionService {
     public async addSubscription(userId: string, subscriptionId: string, startDate: Date, isAutoRenew: boolean) {
 
 
-        const checkSub = await SubscriptionModel.findById({ _id: subscriptionId })
+        const checkSub = await SubscriptionModel.findById({ _id: subscriptionId, isActive: true })
 
-        if (!checkSub || checkSub.isActive === false) {
+        if (!checkSub) {
             throw new HttpException(409, 'Subscription not found')
         }
         const price = checkSub.price
-        const checkUser = await UserModel.findOne({ _id: userId })
+        const checkUser = await UserModel.findOne({ _id: userId, isActive: true })
         if (!checkUser) {
             throw new HttpException(409, 'User not found')
         }
 
-        console.log("price", price)
         const checkSubUser = await UserSubscriptionModel.findOne({ userId, subscriptionId, isActive: true })
         if (checkSubUser) {
             throw new HttpException(409, 'Subscription already exists')
         }
 
-
         const startDateSelect = startDate || new Date();
-        console.log("Start Date:", startDateSelect);
         const endDate = new Date(startDateSelect)
         const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
         // endDate.setMonth(endDate.getMonth() + (checkSub.type === 2 ? 1 : 12))
@@ -172,37 +169,47 @@ export class UserSubscriptionService {
         const currentDate = new Date();
         const reminderDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
 
-
         const expiringSubscriptions = await UserSubscriptionModel.find({
             paymentStatus: 'paid',
             expiry: { $lt: reminderDate },
             isActive: true
-        }).populate({ path: 'subscriptionId', select: 'price' }).populate('userId')
-        console.log("expiringSubscriptions", expiringSubscriptions)
+        }).populate<{ subscriptionId: UserSubscription, userId: UserPurchaseSubScription }>('subscriptionId userId');
+
+        console.log("expiringSubscriptions", expiringSubscriptions);
+
         for (const sub of expiringSubscriptions) {
-            const user = sub.userId as UserPurchaseSubScription;
-            console.log("check Suub function", sub)
-            console.log("user check cron", user)
-            console.log("user.fullName", user.fullName)
+            const user = sub.userId;
+            const subscription = sub.subscriptionId;
+
+            console.log("check Sub function", sub);
+            console.log("user check cron", user);
+            console.log("user.fullName", user.fullName);
+
             const emailData = {
                 userName: user.fullName,
                 email: user.email,
                 subscriptionDetails: {
                     startDate: sub.startDate.toDateString(),
                     endDate: sub.expiry.toDateString(),
-                    price: sub.subscriptionId.price,
+                    price: subscription.price,
                     isAutoRenew: sub.isAutoRenew ? 'Enabled' : 'Disabled',
-                    subscriptionId: sub.subscriptionId._id
+                    subscriptionId: subscription._id
                 }
             };
 
-            await sendSubscriptionExpiryEmail(emailData);
+            try {
+                await sendSubscriptionExpiryEmail(emailData);
+                console.log("Email sent successfully.");
+            } catch (error) {
+                console.error("Error sending email:", error);
+            }
         }
 
         const expiredSubscriptions = await UserSubscriptionModel.find({
             endDate: { $lt: currentDate },
             isActive: true
         });
+        console.log("expiredSubscriptions", expiredSubscriptions)
 
         for (const sub of expiredSubscriptions) {
             if (!sub.isAutoRenew) {
@@ -211,6 +218,7 @@ export class UserSubscriptionService {
                 sub.endDate = null;
                 sub.expiry = null;
                 await sub.save();
+
                 await UserModel.findByIdAndUpdate(sub.userId, {
                     $pull: { subscription: sub._id },
                 });

@@ -51,9 +51,10 @@ class ProductController {
 
     public updateProduct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
             const { id } = req.params;
             const productData = req.body;
-            const updatedProduct = await this.productService.updateProduct(id, productData);
+            const updatedProduct = await this.productService.updateProduct(storeId,id, productData);
             res.status(200).json({ data: updatedProduct, message: 'Product updated successfully' });
         } catch (error) {
             next(error);
@@ -62,8 +63,9 @@ class ProductController {
 
     public deleteProduct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
             const { id } = req.params;
-            await this.productService.deleteProduct(id);
+            await this.productService.deleteProduct(storeId, id);
             res.status(200).json({ message: 'Product deleted successfully' });
         } catch (error) {
             next(error);

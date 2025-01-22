@@ -43,9 +43,10 @@ export class CategoryController {
 
     public updateCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
             const categoryId = req.params.id;
             const categoryData: Partial<CategoryInterface> = req.body;
-            const updatedCategory = await this.categoryService.updateCategory(categoryId, categoryData);
+            const updatedCategory = await this.categoryService.updateCategory(storeId, categoryId, categoryData);
             res.status(200).json({ data: updatedCategory, message: 'Category updated successfully' });
         } catch (error) {
             next(error);
@@ -54,8 +55,9 @@ export class CategoryController {
 
     public deleteCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
             const categoryId = req.params.id;
-            const deletedCategory = await this.categoryService.deleteCategory(categoryId);
+            const deletedCategory = await this.categoryService.deleteCategory(storeId, categoryId);
             res.status(200).json({ data: deletedCategory, message: 'Category deleted successfully' });
         } catch (error) {
             next(error);

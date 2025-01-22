@@ -15,8 +15,8 @@ class ProductRouter {
         this.router.post(`${this.path}`, AuthMiddlewareStore, this.productController.createProduct);
         this.router.get(`${this.path}`, this.productController.getAllProducts);
         this.router.get(`${this.path}/:id`, this.productController.getProductById);
-        this.router.put(`${this.path}/:id`, this.productController.updateProduct);
-        this.router.delete(`${this.path}/:id`, this.productController.deleteProduct);
+        this.router.put(`${this.path}/:id`, AuthMiddlewareStore, this.productController.updateProduct);
+        this.router.delete(`${this.path}/:id`, AuthMiddlewareStore, this.productController.deleteProduct);
         this.router.get(`${this.path}/getAll/category`, this.productController.getProductsByCategory)
     }
 }

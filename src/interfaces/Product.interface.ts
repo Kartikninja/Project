@@ -12,6 +12,7 @@ interface ProductInterface extends Document {
     stockLeft: number;
     subCategoryId: string
     userId: string
+
 }
 
 export default ProductInterface;

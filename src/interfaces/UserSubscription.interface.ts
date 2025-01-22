@@ -12,6 +12,7 @@ export interface UserSubscription extends Document {
     expiry: Date | null
     transactionId: string
     paymentStatus: 'paid' | 'unpaid'
+    price: number
 }
 
 

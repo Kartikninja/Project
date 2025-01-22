@@ -31,14 +31,29 @@ export class CategoryService {
         return category;
     }
 
-    public async updateCategory(categoryId: string, categoryData: Partial<CategoryInterface>): Promise<CategoryInterface | null> {
-        const updatedCategory = await Category.findByIdAndUpdate(categoryId, categoryData, { new: true });
+    public async updateCategory(storeId: string, categoryId: string, categoryData: Partial<CategoryInterface>): Promise<CategoryInterface | null> {
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' })
+        if (!checkStore) {
+            throw new HttpException(404, 'Store not found or store is not active');
+        }
+        const updatedCategory = await Category.findOne({ _id: categoryId, storeId: storeId });
         if (!updatedCategory) throw new Error('Category not found');
+        updatedCategory.name = categoryData.name || updatedCategory.name;
+        updatedCategory.description = categoryData.description || updatedCategory.description;
+        updatedCategory.images = categoryData.images || updatedCategory.images;
+
+
+        await updatedCategory.save();
+
         return updatedCategory;
     }
 
-    public async deleteCategory(categoryId: string): Promise<CategoryInterface | null> {
-        const deletedCategory = await Category.findByIdAndDelete(categoryId);
+    public async deleteCategory(storeId: string, categoryId: string): Promise<CategoryInterface | null> {
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' })
+        if (!checkStore) {
+            throw new HttpException(404, 'Store not found or store is not active');
+        }
+        const deletedCategory = await Category.findByIdAndDelete({ _id: categoryId, storeId: storeId });
         if (!deletedCategory) throw new Error('Category not found');
         return deletedCategory;
     }

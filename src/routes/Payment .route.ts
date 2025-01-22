@@ -1,5 +1,6 @@
 import { PaymentController } from "@/controllers/Payment.controller";
 import { Routes } from "@/interfaces/routes.interface";
+import { isAdmin } from "@/middlewares/auth.middleware";
 import { Router } from "express";
 
 export class PaymentRouter implements Routes {
@@ -19,7 +20,7 @@ export class PaymentRouter implements Routes {
 
         this.router.post(`${this.path}/verify/payment`, this.payment.verifyPayment)
 
-        this.router.get(`${this.path}/admin/getAll`, this.payment.getAllPaymnet)
+        this.router.get(`${this.path}/admin/getAll`, isAdmin, this.payment.getAllPaymnet)
     }
 
 }

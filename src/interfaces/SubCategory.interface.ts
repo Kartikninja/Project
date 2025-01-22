@@ -8,4 +8,6 @@ export interface SubCategoryInterface extends Document {
     userId: Schema.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
+    storeId: string;
+
 }

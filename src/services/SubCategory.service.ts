@@ -1,5 +1,7 @@
 import { HttpException } from '@/exceptions/httpException';
+import { SubCategoryInterface } from '@/interfaces/SubCategory.interface';
 import { Category } from '@/models/Category.model';
+import { StoreModel } from '@/models/Store.model';
 import { SubCategory } from '@/models/SubCategory.model';
 import { Service } from 'typedi';
 
@@ -69,8 +71,8 @@ class SubCategoryService {
 
 
 
-    public async deleteSubCategory(id: string): Promise<void> {
-        const deletedSubCategory = await SubCategory.findByIdAndDelete(id);
+    public async deleteSubCategory(storeId: string, id: string): Promise<void> {
+        const deletedSubCategory = await SubCategory.findByIdAndDelete({ _id: id, storeId: storeId });
         if (!deletedSubCategory) {
             throw new Error('SubCategory not found');
         }
@@ -116,6 +118,39 @@ class SubCategoryService {
 
         return groupedSubCategories;
     }
+
+
+    public async updateSubcategory(storeId: string, id: string, subCategorydata: SubCategoryInterface) {
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' })
+        if (!checkStore) {
+            throw new HttpException(404, 'Store not found');
+        }
+        const subCategory = await SubCategory.findOne({ _id: id, storeId: storeId })
+        if (!subCategory) {
+            throw new HttpException(404, 'SubCategory not found');
+        }
+
+        if (subCategorydata.categoryId) {
+            const checkCategory = await Category.findOne({ _id: subCategory.categoryId, storeId: storeId })
+            if (!checkCategory) {
+                throw new HttpException(404, 'Category not found');
+            }
+        }
+
+        subCategory.name = subCategorydata.name || subCategory.name;
+        subCategory.description = subCategorydata.description || subCategory.description;
+        subCategory.images = subCategorydata.images || subCategory.images;
+        subCategory.categoryId = subCategorydata.categoryId || subCategory.categoryId;
+
+
+        await subCategory.save();
+
+        return subCategory;
+
+
+    }
+
+
 
 }
 
