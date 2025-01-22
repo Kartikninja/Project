@@ -71,12 +71,45 @@ class ProductService {
         return await Product.findById(productId);
     }
 
-    public async updateProduct(productId: string, productData: ProductInterface): Promise<ProductInterface | null> {
-        return await Product.findByIdAndUpdate(productId, productData, { new: true });
+    public async updateProduct(storeId: string, productId: string, productData: ProductInterface): Promise<ProductInterface | null> {
+
+        const product = await Product.findOne({ _id: productId, storeId: storeId });
+        if (!product) {
+            throw new HttpException(404, 'Product not found with this store');
+        }
+        if (productData.subCategoryId) {
+            const checkSubCategory = await SubCategory.findOne({ _id: productData.subCategoryId, storeId: storeId });
+            if (!checkSubCategory) {
+                throw new HttpException(400, 'Invalid subCategoryId');
+            }
+        }
+        if (productData.name && productData.name !== product.name) {
+            const existingProduct = await Product.findOne({ name: productData.name });
+            if (existingProduct) {
+                throw new HttpException(400, 'Product name already exists');
+            }
+        }
+
+        product.name = productData.name || product.name;
+        product.description = productData.description || product.description;
+        product.price = productData.price || product.price;
+        product.stockQuantity = productData.stockQuantity || product.stockQuantity;
+        product.stockLeft = productData.stockLeft || product.stockLeft;
+        product.images = productData.images || product.images;
+        product.subCategoryId = productData.subCategoryId || product.subCategoryId;
+        product.updatedAt = new Date();
+        await product.save();
+
+        return product;
     }
 
-    public async deleteProduct(productId: string): Promise<void> {
-        await Product.findByIdAndDelete(productId);
+    public async deleteProduct(storeId: string, productId: string): Promise<void> {
+
+        const deleteProduct = await Product.findByIdAndDelete({ _id: productId, storeId: storeId });
+        if (!deleteProduct) {
+            throw new HttpException(404, 'Product not found with this store');
+        }
+        return deleteProduct;
     }
 }
 

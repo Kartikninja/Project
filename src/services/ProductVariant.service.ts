@@ -155,13 +155,50 @@ export class ProductVariantService {
         return productVariant;
     }
 
-    public async updateProductVariant(id: string, productVariantData: any) {
-        const updatedProductVariant = await ProductVariant.findByIdAndUpdate(id, productVariantData, { new: true });
-        return updatedProductVariant;
+    public async updateProductVariant(storeId: string, id: string, productVariantData: any) {
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' })
+        if (!checkStore) {
+            throw new HttpException(404, 'Store not found or store is not active');
+        }
+        const productVariant = await ProductVariant.findOne({ _id: id, storeId: storeId })
+        if (!productVariant) {
+            throw new HttpException(404, 'Product Variant not found')
+        }
+        if (productVariant.productId) {
+            const productId = await Product.findOne({ _id: productVariant.productId, storeId: storeId })
+            if (!productId) {
+                throw new HttpException(404, 'Product not found')
+            }
+        }
+        productVariant.price = productVariantData.price || productVariant.price;
+        productVariant.stockQuantity = productVariantData.stockQuantity || productVariant.stockQuantity;
+        productVariant.stockLeft = productVariantData.stockLeft || productVariant.stockLeft;
+        productVariant.images = productVariantData.images || productVariant.images;
+
+        if (productVariantData.attributes) {
+            if (productVariantData.attributes.size) {
+                productVariant.attributes.size = productVariantData.attributes.size;
+            }
+            if (productVariantData.attributes.color) {
+                productVariant.attributes.color = productVariantData.attributes.color;
+            }
+            if (productVariantData.attributes.material) {
+                productVariant.attributes.material = productVariantData.attributes.material;
+            }
+        }
+        productVariant.updatedAt = new Date();
+        await productVariant.save();
+
+        return productVariant;
+
     }
 
-    public async deleteProductVariant(id: string) {
-        await ProductVariant.findByIdAndDelete(id);
+    public async deleteProductVariant(storeId: string, id: string) {
+        const deleteProductVariant = await ProductVariant.findByIdAndDelete({ _id: id, storeId: storeId });
+        if (!deleteProductVariant) {
+            throw new HttpException(404, 'Product Variant not found')
+        }
+        return deleteProductVariant;
     }
 }
 

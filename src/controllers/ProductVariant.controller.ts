@@ -42,9 +42,10 @@ export class ProductVariantController {
 
     public updateProductVariant = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
             const { id } = req.params;
             const productVariantData = req.body;
-            const updatedProductVariant = await this.productVariantService.updateProductVariant(id, productVariantData);
+            const updatedProductVariant = await this.productVariantService.updateProductVariant(storeId, id, productVariantData);
             res.status(200).json({ data: updatedProductVariant, message: 'Product variant updated successfully' });
         } catch (error) {
             next(error);
@@ -53,8 +54,9 @@ export class ProductVariantController {
 
     public deleteProductVariant = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const storeId = req.store._id
             const { id } = req.params;
-            await this.productVariantService.deleteProductVariant(id);
+            await this.productVariantService.deleteProductVariant(storeId, id);
             res.status(200).json({ message: 'Product variant deleted successfully' });
         } catch (error) {
             next(error);

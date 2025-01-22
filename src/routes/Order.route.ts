@@ -16,9 +16,9 @@ class OrderRouter {
         this.router.get(`${this.path}/:id`, AuthMiddleware, this.orderController.getOrderById);
         this.router.get(`${this.path}`, AuthMiddleware, this.orderController.getAllOrders);
         this.router.delete(`${this.path}/:id`, AuthMiddleware, this.orderController.deleteOrder);
-        this.router.put(`${this.path}/update/status`, AuthMiddlewareStore, this.orderController.updateOrderStatus)
         this.router.put(`${this.path}/updateOrder/:orderId`, AuthMiddleware, this.orderController.updateOrder)
-
+        
+        this.router.put(`${this.path}/update/status`, AuthMiddlewareStore, this.orderController.updateOrderStatus)
 
         this.router.get(`${this.path}/admin/getAll`, isAdmin, this.orderController.getAllAdmin)
     }
