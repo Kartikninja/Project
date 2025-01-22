@@ -11,7 +11,6 @@ import { Discount_TYPE } from '@/utils/constant';
 import { SubCategory } from '@/models/SubCategory.model';
 import { NotificationService } from './Notification.service';
 import { sendOrderUpdateEmail, sendPurchaseEmail, sendStatusUpdateEmail } from '@/utils/mailer';
-import mongoose from 'mongoose';
 import { CartItem, DiscountAttributes } from '@/interfaces/Discount.interface';
 
 
@@ -120,7 +119,7 @@ class OrderService {
             const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order');
             console.log('payment', payment);
 
-            const orderId = `ORD-${new Date().getTime()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+            const orderId = `ORD-${new Date().getTime()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
             const order = await OrderModel.create({
                 orderId,
                 userId,
@@ -617,14 +616,20 @@ class OrderService {
 
         console.log("Updated Total Price:", totalPrice);
 
+        const storeId = order.storeId
+        const UpdatedOrderId = `UPDATE-ORD-${new Date().getTime()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
+        const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order')
         order.products = updatedOrderProducts;
         order.totalPrice = Math.max(totalPrice, 0);
+        order.orderId = UpdatedOrderId
+        order.transactionId = payment.transactionId
+        order.shippingAddress = orderData.shippingAddress
+
 
         await order.save();
 
         console.log("Order Successfully Updated:", order);
 
-        const storeId = order.storeId
         const io = await this.notification.getIO()
         if (io) {
             try {
@@ -654,14 +659,21 @@ class OrderService {
 
             }
         }
-
+        await this.notification.sendAdminNotification(
+            'Order',
+            `Update order from ${user.fullName}`,
+            'order-updated',
+            'User',
+            userId,
+            storeId.toString(),
+            order.id
+        );
         const populatedProducts = await Promise.all(
             updatedProducts.map(async (product) => {
                 console.log('Product:', product);
                 if (!product || !product.productId || !product.productVariantId) {
                     throw new HttpException(400, 'Invalid product or missing productId/productVariantId');
                 }
-
 
                 try {
                     const productData = await Product.findById(product.productId).lean();
@@ -717,343 +729,6 @@ class OrderService {
 
         return order;
     }
-
-
-
-
-
-
-
-
-
-
-    // public async updateOrder(userId: string, orderId: string, orderData: any): Promise<any> {
-    //     const { products: updatedProducts = [], discountCode } = orderData;
-
-    //     const order = await OrderModel.findOne({ _id: orderId, userId });
-    //     if (!order) throw new HttpException(404, 'Order not found or you are not authorized to update it');
-
-    //     if (order.orderStatus === 'confirmed' || order.orderStatus === 'shipped') {
-    //         throw new HttpException(400, 'Cannot update order status once it is confirmed or shipped');
-    //     }
-
-    //     console.log("Current Order Details:", order);
-
-    //     const currentProductVariantIds = order.products.map((p) => p.productVariantId);
-    //     const productVariants = await ProductVariant.find({
-    //         _id: { $in: currentProductVariantIds },
-    //     });
-
-    //     // console.log("Fetched Product Variants for Current Order:", productVariants);
-
-    //     const currentPriceMap: Record<string, number> = {};
-    //     productVariants.forEach((variant) => {
-    //         currentPriceMap[variant._id.toString()] = variant.price;
-    //     });
-
-    //     // console.log("Current Price Map:", currentPriceMap);
-
-    //     let totalPrice = 0;
-    //     const updatedOrderProducts = [];
-
-    //     for (let currentProduct of order.products) {
-    //         const variantId = currentProduct.productVariantId.toString();
-    //         const currentPrice = currentPriceMap[variantId] || 0;
-
-    //         console.log("Processing Current Product:", {
-    //             variantId,
-    //             currentPrice,
-    //             currentQuantity: currentProduct.quantity,
-    //         });
-
-    //         const updatedProduct = updatedProducts.find(
-    //             (p: any) => p.productVariantId.toString() === variantId
-    //         );
-
-    //         let productDiscount = 0;
-    //         if (updatedProduct) {
-    //             const updatedQuantity = updatedProduct.quantity || 0;
-    //             // console.log("Updated Product Details:", {
-    //             //     variantId,
-    //             //     updatedQuantity,
-    //             //     updatedTotalPrice: currentPrice * updatedQuantity,
-    //             // });
-
-
-    //             const product = await Product.findById(currentProduct.productId);
-    //             if (!product) {
-    //                 throw new HttpException(404, `Product not found for ID: ${currentProduct.productId}`);
-    //             }
-
-    //             console.log("productId for updatedProduct", product._id)
-    //             const subCategory = await SubCategory.findById(product.subCategoryId);
-    //             const categoryId = subCategory ? subCategory.categoryId.toString() : null;
-    //             console.log("subCategoryId for updatedProduct", subCategory._id)
-    //             console.log("CategoryId for updatedProduct", categoryId)
-
-
-    //             const appliedDiscount = await this.getDiscount({
-    //                 discountCode,
-    //                 storeId: order.storeId.toString(),
-    //                 productId: currentProduct.productId.toString(),
-    //                 categoryId,
-    //                 subCategoryId: product.subCategoryId,
-    //                 quantity: updatedQuantity,
-    //             });
-    //             console.log("appliedDiscount for UpdatedProduct", appliedDiscount);
-
-    //             let productDiscount = 0;
-    //             if (appliedDiscount) {
-    //                 const { discount_type, value } = appliedDiscount;
-    //                 productDiscount = discount_type === Discount_TYPE.PERCENTAGE ? (currentPrice * value) / 100 : value;
-    //                 console.log("Product Discount for updated Product", productDiscount)
-    //             }
-
-    //             const discountedPrice = (currentPrice - productDiscount) * updatedQuantity;
-    //             console.log("discountedPrice  for UpdatedProduct", discountedPrice);
-    //             totalPrice += discountedPrice;
-
-    //             if (appliedDiscount) {
-    //                 console.log(`Discount applied for product ${currentProduct.productId}:`, {
-    //                     // code: appliedDiscount.code,
-    //                     // discountType: appliedDiscount.discount_type,
-    //                     // value: appliedDiscount.value,
-    //                     productDiscount,
-    //                 });
-    //             }
-
-    //             updatedOrderProducts.push({
-    //                 ...currentProduct,
-    //                 quantity: updatedQuantity,
-    //             });
-    //         }
-    //         else {
-    //             const originalQuantity = currentProduct.quantity || 0;
-    //             // console.log("Retaining Original Product:", {
-    //             //     variantId,
-    //             //     originalQuantity,
-    //             //     originalTotalPrice: currentPrice * originalQuantity,
-    //             // });
-    //             const product = await Product.findById(currentProduct.productId);
-    //             if (!product) {
-    //                 throw new HttpException(404, `Product not found for ID: ${currentProduct.productId}`);
-    //             }
-
-
-
-    //             const subCategory = await SubCategory.findById(product.subCategoryId);
-    //             const categoryId = subCategory ? subCategory.categoryId.toString() : null;
-
-
-    //             const appliedDiscount = await this.getDiscount({
-    //                 discountCode,
-    //                 storeId: order.storeId.toString(),
-    //                 productId: currentProduct.productId.toString(),
-    //                 categoryId,
-    //                 subCategoryId: product.subCategoryId,
-    //                 quantity: originalQuantity,
-    //             });
-    //             console.log("appliedDiscount for not updtaedProduct", appliedDiscount);
-
-    //             if (appliedDiscount) {
-    //                 const { discount_type, value } = appliedDiscount;
-    //                 productDiscount = discount_type === Discount_TYPE.PERCENTAGE ? (currentPrice * value) / 100 : value;
-    //                 console.log("productDiscount for not updatedProduct", productDiscount);
-    //             }
-
-    //             const discountedPrice = (currentPrice - productDiscount) * originalQuantity;
-    //             console.log("discountedPrice for not updtaedProduct", discountedPrice);
-
-    //             totalPrice += discountedPrice;
-
-    //             updatedOrderProducts.push(currentProduct);
-    //         }
-    //     }
-
-
-    //     for (let newProduct of updatedProducts) {
-    //         const { productVariantId, quantity } = newProduct;
-
-    //         if (!order.products.some((p) => p.productVariantId.toString() === productVariantId.toString())) {
-    //             const variant = await ProductVariant.findById(productVariantId);
-    //             if (!variant) throw new HttpException(404, `ProductVariant not found for ID: ${productVariantId}`);
-
-    //             const newPrice = variant.price || 0;
-    //             let productDiscount = 0;
-
-    //             const product = await Product.findById(newProduct.productId);
-    //             if (!product) {
-    //                 throw new HttpException(404, `Product not found for ID: ${newProduct.productId}`);
-    //             }
-
-    //             const subCategory = await SubCategory.findById(product.subCategoryId);
-    //             const categoryId = subCategory ? subCategory.categoryId.toString() : null;
-
-    //             console.log(`For new product (ID: ${newProduct.productId}), subCategory: ${subCategory?._id}, Category: ${categoryId}`);
-
-    //             const appliedDiscount = await this.getDiscount({
-    //                 discountCode,
-    //                 storeId: order.storeId.toString(),
-    //                 productId: newProduct.productId,
-    //                 categoryId,
-    //                 subCategoryId: product.subCategoryId,
-    //                 quantity,
-    //             });
-
-    //             if (appliedDiscount) {
-    //                 console.log(`Applied Discount for product (ID: ${newProduct.productId}):`, appliedDiscount);
-    //             } else {
-    //                 console.log(`No discount found for product (ID: ${newProduct.productId})`);
-    //             }
-
-    //             if (appliedDiscount) {
-    //                 const { discount_type, value } = appliedDiscount;
-    //                 console.log("Original Price for product:", newPrice);
-
-    //                 productDiscount = discount_type === Discount_TYPE.PERCENTAGE
-    //                     ? (newPrice * value) / 100
-    //                     : value;
-
-    //                 console.log("Discount applied for product (ID: " + newProduct.productId + "):", productDiscount);
-    //             }
-
-
-    //             const discountedPrice = (newPrice - productDiscount) * quantity;
-    //             console.log("Discounted price for product (ID: " + newProduct.productId + "):", discountedPrice);
-    //             console.log("totalPrice", totalPrice)
-
-    //             totalPrice += discountedPrice;
-    //             console.log("totalPrice after adding", totalPrice)
-
-
-    //             console.log("Updated Total Price after adding product (ID: " + newProduct.productId + "):", totalPrice);
-
-
-    //             updatedOrderProducts.push({
-    //                 productId: variant.productId,
-    //                 productVariantId,
-    //                 quantity,
-    //             });
-    //         }
-    //     }
-
-
-    //     console.log("Updated Total Price:", totalPrice);
-
-
-
-    //     console.log("Final Updated Products List:", updatedOrderProducts);
-    //     console.log("Final Total Price:", totalPrice);
-
-    //     order.products = updatedOrderProducts;
-    //     order.totalPrice = Math.max(totalPrice, 0);
-
-    //     await order.save();
-
-    //     console.log("Order Successfully Updated:", order);
-
-    //     return order;
-    // }
-
-
-
-
-
-
-    // public async updateOrder(userId: string, orderId: string, orderData: any): Promise<any> {
-    //     const { products: updatedProducts = [], discountCode } = orderData;
-
-    //     const order = await OrderModel.findOne({ _id: orderId, userId });
-    //     if (!order) throw new HttpException(404, 'Order not found or unauthorized access');
-
-    //     if (['confirmed', 'shipped'].includes(order.orderStatus)) {
-    //         throw new HttpException(400, 'Cannot update order status after confirmation or shipment');
-    //     }
-
-    //     const currentProductVariantIds = order.products.map((p) => p.productVariantId);
-    //     const productVariants = await ProductVariant.find({ _id: { $in: currentProductVariantIds } });
-    //     const currentPriceMap = Object.fromEntries(productVariants.map(v => [v._id.toString(), v.price]));
-
-    //     let totalPrice = 0;
-    //     const updatedOrderProducts = [];
-
-    //     // Process existing products
-    //     for (const currentProduct of order.products) {
-    //         const variantId = currentProduct.productVariantId.toString();
-    //         const currentPrice = currentPriceMap[variantId] || 0;
-
-    //         const discount = await this.getDiscount({
-    //             storeId: order.storeId.toString(),
-    //             productId: currentProduct.productId.toString(),
-    //             subCategoryId: currentProduct.subCategoryId?.toString(),
-    //             categoryId: currentProduct.categoryId?.toString(),
-    //             quantity: currentProduct.quantity,
-    //         });
-
-    //         const finalPrice = discount
-    //             ? currentPrice * (1 - discount.percentage / 100)
-    //             : currentPrice;
-
-    //         totalPrice += finalPrice * currentProduct.quantity;
-
-    //         updatedOrderProducts.push({ ...currentProduct, price: finalPrice });
-    //     }
-
-    //     // Process new products
-    //     for (const newProduct of updatedProducts) {
-    //         const { productId, productVariantId, quantity } = newProduct;
-    //         const productVariant = await ProductVariant.findOne({ _id: productVariantId });
-    //         if (!productVariant) throw new HttpException(404, 'Product variant not found');
-
-    //         const discount = await this.getDiscount({
-    //             storeId: order.storeId.toString(),
-    //             productId: productId.toString(),
-    //             subCategoryId: productVariant.subCategoryId?.toString(),
-    //             categoryId: productVariant.categoryId?.toString(),
-    //             quantity,
-    //         });
-
-    //         const finalPrice = discount
-    //             ? productVariant.price * (1 - discount.percentage / 100)
-    //             : productVariant.price;
-
-    //         totalPrice += finalPrice * quantity;
-
-    //         updatedOrderProducts.push({ ...newProduct, price: finalPrice });
-    //     }
-
-    //     const updatedOrder = await OrderModel.updateOne(
-    //         { _id: orderId, __v: order.__v },
-    //         {
-    //             $set: { products: updatedOrderProducts, totalPrice, updatedAt: new Date() },
-    //             $inc: { __v: 1 },
-    //         }
-    //     );
-
-    //     return updatedOrder;
-    // }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     public async updateOrderStatus(orderId: string, status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"): Promise<any> {
