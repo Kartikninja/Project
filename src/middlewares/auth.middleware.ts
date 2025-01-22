@@ -53,6 +53,7 @@ export const AuthMiddlewareStore = async (req: RequestWithUser, res: Response, n
     if (Authorization) {
       const { _id, role } = (await verify(Authorization, SECRET_KEY)) as DataStoredInToken;
       const findStore = await StoreModel.findById(_id);
+      // console.log("findStore", findStore)
       if (!findStore) return res.status(401).json({ message: "Store not found." });
 
       if (!findStore.token) return res.status(401).json({ message: "You are Logged Out" });
@@ -85,9 +86,10 @@ export const isAdmin = async (
       )) as DataStoredInToken;
 
       const findUser = await UserModel.findById(_id);
-
+      // console.log("findUser", findUser)
       if (findUser) {
-        if (role == USER_ROLES.ADMIN) {
+        if (findUser.role === 3) {
+          // console.log("role", role)
           req.user = findUser;
           next();
         } else {

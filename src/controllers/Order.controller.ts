@@ -34,6 +34,7 @@ class OrderController {
     public getAllOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { _id: userId } = req.user;
+
             const orders = await this.orderService.getAllOrders(userId);
             res.status(200).json({ data: orders, message: 'Orders retrieved successfully' });
         } catch (error) {
@@ -75,12 +76,9 @@ class OrderController {
     public updateOrderStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { orderId, status } = req.body;
-            const userId = req.user._id;
-            const userRole = req.user.role;
 
-            if (userRole !== 1) {
-                res.status(403).json({ message: 'You are not authorized to update order status' });
-            }
+            const storeId = req.store._id
+
 
 
             const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -88,12 +86,29 @@ class OrderController {
                 res.status(400).json({ message: 'Invalid order status' });
             }
 
-            const updatedOrder = await this.orderService.updateOrderStatus(orderId, status);
+            const updatedOrder = await this.orderService.updateOrderStatus(storeId, orderId, status);
             res.status(200).json({ data: updatedOrder, message: 'Order status updated successfully' });
         } catch (error) {
             next(error);
         }
     };
+
+
+
+
+    public getAllAdmin = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const orders = await this.orderService.getAllAdminOrders();
+            res.status(200).json({ message: "Get All", orders })
+        } catch (err) {
+            next(err)
+        }
+    }
+
+
+
+
+
 
 }
 

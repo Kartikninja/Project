@@ -92,6 +92,7 @@ export class AuthController {
     }
   };
 
+  
   public verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { token } = req.params;

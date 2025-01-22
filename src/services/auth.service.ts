@@ -228,6 +228,7 @@ export class AuthService {
 
   public async forgotPassword(userData: User): Promise<User> {
     const { email, isActive } = userData;
+
     const user = await UserModel.findOne({ email, isActive });
     if (!user) throw new HttpException(409, "User doesn't exist");
     const token = await createToken(user).token;

@@ -75,6 +75,12 @@ export class PaymentService {
 
 
 
+    public async getAllPaymnet() {
+        const getAll = await PaymentModel.find()
+        return getAll
+    }
+
+
 
 
 }
