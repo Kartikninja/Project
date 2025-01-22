@@ -3,7 +3,7 @@ import { UserSubscriptionController } from "@/controllers/UserSubscription.contr
 import { Routes } from "@/interfaces/routes.interface";
 import { ValidationMiddleware } from "@/middlewares/validation.middleware";
 import { CreateUserSubscriptionDto } from "@/dtos/UserSubscription .dto";
-import { AuthMiddleware } from "@/middlewares/auth.middleware";
+import { AuthMiddleware, isAdmin } from "@/middlewares/auth.middleware";
 
 export class UserSubscriptionRoute implements Routes {
     public path = '/userSubscription';
@@ -15,9 +15,9 @@ export class UserSubscriptionRoute implements Routes {
     }
 
     private initializeRoutes() {
-        this.router.post(`${this.path}/:subscriptionId`, AuthMiddleware, this.userSubscriptionController.add);
+        this.router.post(`${this.path}/:subscriptionId`, isAdmin, this.userSubscriptionController.add);
         this.router.get(`${this.path}/getAll`, this.userSubscriptionController.getAll)
         this.router.get(`${this.path}/:id`, this.userSubscriptionController.getById)
-        this.router.delete(`${this.path}/:id`, this.userSubscriptionController.delete)
+        this.router.delete(`${this.path}/:id`, isAdmin, this.userSubscriptionController.delete)
     }
 }

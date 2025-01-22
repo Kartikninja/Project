@@ -36,6 +36,16 @@ export class PaymentController {
 
 
 
+    public getAllPaymnet = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const getAll = await this.paymentService.getAllPaymnet()
+            res.status(201).json(getAll)
+        } catch (err) {
+            next(err)
+        }
+    }
+
+
 
 
     public async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {

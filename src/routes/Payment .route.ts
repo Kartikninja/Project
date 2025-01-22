@@ -18,6 +18,8 @@ export class PaymentRouter implements Routes {
         this.router.post(`${this.path}/createRazorPay`, this.payment.createRazorpayPayment)
 
         this.router.post(`${this.path}/verify/payment`, this.payment.verifyPayment)
+
+        this.router.get(`${this.path}/admin/getAll`, this.payment.getAllPaymnet)
     }
 
 }

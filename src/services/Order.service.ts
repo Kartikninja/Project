@@ -92,17 +92,17 @@ class OrderService {
 
                 const productData = await Product.findById(productId);
                 if (!productData) throw new HttpException(404, 'This Product is not found');
-
+                if (productData.stockLeft <= 0) throw new HttpException(404, `${productData.name} is not avalible for this time`)
                 const productVariant = await ProductVariant.findOne({ _id: productVariantId, productId });
                 if (!productVariant) throw new HttpException(404, 'This Product Variant is not found');
-
+                if (productVariant.stockLeft <= 0) throw new HttpException(404, `this ${productVariant._id} is not avalible for this time `)
 
 
                 const subCategory = await SubCategory.findById(productData.subCategoryId);
                 const variantPrice = productVariant.price || 0;
                 const discountedPrice = await calculateDiscountedPrice(discountCode, productId, productVariantId.toString(), quantity, variantPrice);
-
                 totalPrice += discountedPrice
+                console.log(`totalPrice ${totalPrice} and discountedPrice ${discountedPrice}`)
 
 
                 createOrder.push({
@@ -175,9 +175,9 @@ class OrderService {
                 order.id
             );
 
-            console.log("products for quatity", products)
+
             const populatedProducts = await Promise.all(
-                products.map(async (product) => {
+                createOrder.map(async (product) => {
                     const productData = await Product.findById(product.productId);
                     if (!productData) throw new HttpException(404, 'Product not found');
 
@@ -197,7 +197,7 @@ class OrderService {
             );
 
 
-            console.log("products", populatedProducts)
+
 
             const emailDetails = {
                 orderDate: new Date(),
@@ -254,9 +254,7 @@ class OrderService {
 
 
     public async getApplicableDiscount(cartItems: CartItem[]): Promise<(DiscountAttributes & { totalAfterDiscount?: number }) | null> {
-        console.log("getApplicableDiscount");
 
-        console.log("cartItems for discount", cartItems)
         let totalOriginalPrice = 0;
         let totalAfterDiscount = 0;
         let discountBreakdown: any[] = [];
@@ -562,7 +560,7 @@ class OrderService {
                 totalPrice += discountedPrice;
                 updatedOrderProducts.push({
                     ...currentProduct,
-                    finalPrice: currentPrice,
+                    finalPrice: discountedPrice,
                     quantity: updatedQuantity,
                 });
             } else {
@@ -578,7 +576,7 @@ class OrderService {
 
                 totalPrice += discountedPrice;
 
-                updatedOrderProducts.push({ ...currentProduct, finalPrice: currentPrice, quantity: originalQuantity });
+                updatedOrderProducts.push({ ...currentProduct, finalPrice: discountedPrice, quantity: originalQuantity });
             }
         }
 
@@ -608,7 +606,7 @@ class OrderService {
                     productId: variant.productId,
                     productVariantId,
                     quantity,
-                    finalPrice: newPrice
+                    finalPrice: discountedPrice
 
                 });
             }
@@ -731,10 +729,12 @@ class OrderService {
     }
 
 
-    public async updateOrderStatus(orderId: string, status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"): Promise<any> {
+    public async updateOrderStatus(storeId: string, orderId: string, status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"): Promise<any> {
         const order = await OrderModel.findById(orderId);
         if (!order) throw new HttpException(404, 'Order not found');
+        const checkOrder = await OrderModel.findOne({ _id: orderId, storeId: storeId })
 
+        if (!checkOrder) throw new HttpException(404, 'You are not accessible for update this order')
         order.orderStatus = status;
 
         await order.save();
@@ -778,6 +778,30 @@ class OrderService {
 
         return order;
     }
+
+
+
+    public async getAllAdminOrders() {
+        const orders = await OrderModel.find()
+            .populate('userId', 'email')
+            .populate('storeId', 'name')
+            .populate('products.productId', 'name')
+            .populate('products.productVariantId', 'variantDetails');
+        const groupedOrder = orders.reduce((result, order) => {
+            const user = order.userId as any
+            const key = user?.email || "Unknown User";
+            if (!result[key]) {
+                result[key] = []
+            }
+            result[key].push(order)
+            return result
+
+        }, {})
+
+
+        return groupedOrder;
+    }
+
 
 
 

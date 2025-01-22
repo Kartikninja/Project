@@ -129,7 +129,7 @@ export class StoreService {
         const { email, password } = SotreData
 
         const findUser: StoreDocument = await StoreModel.findOne({ email, isVerified: true })
-        if (!findUser) throw new HttpException(401, `Email Does not Exist, Please Sing Up`);
+        if (!findUser) throw new HttpException(401, `Email Does not Exist, Please Sing Up or your store is not verified`);
         if (!findUser.password) throw new HttpException(401, `You are logged-in via social platform. Please login in with your social account`);
         if (!findUser.isVerified) throw new HttpException(401, `User is not verified. Please verify your email to log in.`);
 
