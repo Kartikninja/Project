@@ -5,9 +5,16 @@ import { HttpException } from '@exceptions/httpException';
 import Razorpay from 'razorpay';
 
 const razorpayInstance = new Razorpay({
-    key_secret: "LHne19LML33mbPUkXTXRT8lg",
-    key_id: "rzp_test_YqGZbzQiL08W1B"
+    key_secret: "22ZNfSFxTpBBr5U9ycVU19zW",
+    key_id: "rzp_test_ly2znj2ybm1Qqm"
 })
+
+// [convert]:: ToBase64String([System.Text.Encoding]:: UTF8.GetBytes("rzp_test_ly2znj2ybm1Qqm:22ZNfSFxTpBBr5U9ycVU19zW"))
+
+// echo - n "rzp_test_ly2znj2ybm1Qqm:22ZNfSFxTpBBr5U9ycVU19zW" | base64
+
+
+// cnpwX3Rlc3RfWXFHWmJ6UWlMMDhXMUI6TEhuZTE5TE1MMzNtYlBVa1hUWFJUOGxn
 
 @Service()
 export class PaymentService {
@@ -24,6 +31,7 @@ export class PaymentService {
             };
 
             const order = await razorpayInstance.orders.create(options)
+            console.log("payment createRazorpayOrder", order)
             const paymentData: Payment = {
                 userId,
                 transactionId: order.id,
@@ -48,6 +56,7 @@ export class PaymentService {
     public async createPayment(paymentData: Payment): Promise<Payment> {
         try {
             const newPayment = new PaymentModel(paymentData);
+            console.log("newPayment", newPayment)
             await newPayment.save();
             return newPayment;
         } catch (error) {
