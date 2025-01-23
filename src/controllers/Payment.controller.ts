@@ -13,11 +13,36 @@ import { PaymentModel } from '@/models/Payment.model';
 import { SubscriptionModel } from '@/models/Subscription.model';
 import { Product } from '@/models/Product.model';
 
-
 export const razorpayInstance = new razorpay({
-    key_secret: "LHne19LML33mbPUkXTXRT8lg",
-    key_id: "rzp_test_YqGZbzQiL08W1B"
+    key_secret: "22ZNfSFxTpBBr5U9ycVU19zW",
+    key_id: "rzp_test_ly2znj2ybm1Qqm"
 })
+
+// $ echo - n "rzp_test_ly2znj2ybm1Qqm:22ZNfSFxTpBBr5U9ycVU19zW" | base64
+
+
+
+
+
+
+
+
+// {
+//     "account_number": "50100102283912",
+//         "fund_account_id": "fa_PmpnVsPqkVYbT2",
+//             "amount": 1000000,
+//                 "currency": "INR",
+//                     "mode": "IMPS",
+//                         "purpose": "refund",
+//                             "queue_if_low_balance": true,
+//                                 "reference_id": "Acme Transaction ID 12345",
+//                                     "narration": "Acme Corp Fund Transfer",
+//                                         "notes": {
+//         "notes_key_1": "Tea, Earl Grey, Hot",
+//             "notes_key_2": "Tea, Earl Grey… decaf."
+//     }
+// }
+
 
 export class PaymentController {
     private paymentService = Container.get(PaymentService);
@@ -48,13 +73,14 @@ export class PaymentController {
 
 
 
+
+    // webhook secret: Kartik02@
     public async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
         console.log('Request Body:', req.body);
         const { razorpayPaymentId, razorpayOrderId, razorpaySignature, modelName } = req.body;
-
         const body = razorpayOrderId + '|' + razorpayPaymentId;
 
-        const secretKey = 'LHne19LML33mbPUkXTXRT8lg';
+        const secretKey = '22ZNfSFxTpBBr5U9ycVU19zW';
         const generatedSignature = crypto
             .createHmac('sha256', secretKey)
             .update(body)
