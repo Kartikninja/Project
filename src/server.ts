@@ -12,6 +12,8 @@ import ProductVariantRouter from './routes/ProductVariant.route';
 import OrderRouter from './routes/Order.route';
 import { DiscountRouter } from './routes/Discount.route';
 import { NotificationRoute } from './routes/Notifiaction.route';
+import { RazorpayRoute } from './routes/razorpay.route';
+import { PayoutRoute } from './routes/Payout.route';
 
 
 
@@ -25,7 +27,9 @@ new SubCategoryRoute(),
 new ProductVariantRouter(),
 new OrderRouter(),
 new DiscountRouter(),
-    new NotificationRoute()
+new NotificationRoute(),
+new RazorpayRoute(),
+new PayoutRoute()
 ]);
 
 app.listen();

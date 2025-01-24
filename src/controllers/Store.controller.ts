@@ -16,21 +16,22 @@ export class StoreController {
             storeImage } = req.body;
 
         try {
-            const store = await this.storeService.createStore({
-                storeName,
-                storeDescription,
-                location,
-                storeImage,
-                fullName,
-                email,
-                phoneNumber,
-                address,
-                role: 3,
-                profileImage,
-                dateOfBirth,
-                password
+            // const store = await this.storeService.createStore({
+            //     storeName,
+            //     storeDescription,
+            //     location,
+            //     storeImage,
+            //     fullName,
+            //     email,
+            //     phoneNumber,
+            //     address,
+            //     role: 3,
+            //     profileImage,
+            //     dateOfBirth,
+            //     password
 
-            });
+            // });
+            const store = await this.storeService.createStore(req.body)
             res.status(201).json({
                 data: { store },
                 message: 'Store created and user updated successfully',

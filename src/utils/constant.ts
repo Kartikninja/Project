@@ -16,6 +16,7 @@ export enum SUBSCRIPTIONS_TYPES {
   FREE = 1,
   MONTHLY = 2,
   YEARLY = 3,
+  WEEKLY = 4
 }
 
 export enum Discount_TYPE {

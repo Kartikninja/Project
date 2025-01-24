@@ -12,6 +12,7 @@ import { FRONT_END_URL, SECRET_KEY } from "@/config";
 import { sign, verify } from 'jsonwebtoken';
 import { DataStoredInToken, TokenData } from "@/interfaces/auth.interface";
 import { NotificationService } from "./Notification.service";
+import { RazorpayService } from "@services/razorpay.service";
 
 
 
@@ -45,7 +46,7 @@ const verifyToken = (token: string): DataStoredInToken => {
 export class StoreService {
 
     private notificationService = Container.get(NotificationService)
-
+    private razorpay = Container.get(RazorpayService)
 
     public async createStore(storeData: Partial<StoreDocument>) {
         const emailExists = await StoreModel.findOne({ email: storeData.email, isActive: true });
@@ -66,11 +67,33 @@ export class StoreService {
                 isVerified: false,
                 role: 3
             })
+            await sendOtpEmail(storeData.email, otp, storeData.fullName);
+
+
+
+
+            let razorpayContact, razorpayFundAccount;
+
             try {
-                await sendOtpEmail(storeData.email, otp, storeData.fullName);
-            } catch (error) {
-                throw new HttpException(500, 'Failed to send OTP email');
+                razorpayContact = await this.razorpay.createCustomer(storeData)
+                console.log("razorpayContact", razorpayContact)
+                const bankDetails = storeData.payoutBankDetails
+                console.log("bankDetails", bankDetails)
+                razorpayFundAccount = await this.razorpay.createFundAccount(razorpayContact.id, {
+                    accountHolderName: storeData.fullName,
+                    accountNumber: bankDetails.accountNumber,
+                    ifsc: bankDetails.ifsc,
+                })
+                console.log("razorpayFundAccount", razorpayFundAccount)
+            } catch (err) {
+                console.error('Failed to set up Razorpay for store:', err);
+                throw new HttpException(500, 'Error creating Razorpay resources');
             }
+            createStoreData.razorpayContactId = razorpayContact.id;
+            createStoreData.razorpayFundAccountId = razorpayFundAccount.id;
+            await createStoreData.save();
+
+
             const tokenData = await createToken(createStoreData).token
 
             const io = this.notificationService.getIO();
@@ -93,6 +116,35 @@ export class StoreService {
         }
 
     }
+
+
+    //  try {
+    //     const contact = await razorpayInstance.contacts.create({
+    //         name: storeData.storeName,
+    //         email: storeData.email,
+    //         contact: storeData.phoneNumber,
+    //         type: "vendor",
+    //     });
+
+    //     const fundAccount = await razorpayInstance.fundAccount.create({
+    //         contact_id: contact.id,
+    //         account_type: "bank_account",
+    //         bank_account: {
+    //             name: storeData.storeName,
+    //             account_number: storeData.payoutBankDetails.accountNumber,
+    //             ifsc: storeData.payoutBankDetails.ifsc,
+    //         },
+    //     });
+
+    //     // 3. Save Razorpay IDs to Store
+    //     storeData.razorpayContactId = contact.id;
+    //     storeData.razorpayFundAccountId = fundAccount.id;
+
+    // } catch (error) {
+    //     await StoreModel.deleteOne({ email: storeData.email }); // Rollback
+    //     throw new HttpException(500, 'Razorpay account setup failed');
+    // }
+
 
 
     public async verifyOtp(email: string, otp: string) {

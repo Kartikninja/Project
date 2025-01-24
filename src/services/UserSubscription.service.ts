@@ -9,6 +9,7 @@ import { NotificationService } from "./Notification.service";
 import { sendpurchaseSubscriptionemail, sendSubscriptionExpiryEmail } from "@/utils/mailer";
 import { User } from "@/interfaces/users.interface";
 import { UserPurchaseSubScription, UserSubscription } from "@/interfaces/UserSubscription.interface";
+import { RazorpayService } from "./razorpay.service";
 
 
 
@@ -18,7 +19,7 @@ export class UserSubscriptionService {
 
     private payment = Container.get(PaymentService)
     private notification = Container.get(NotificationService)
-
+    private razorpayService = Container.get(RazorpayService)
 
     public async addSubscription(userId: string, subscriptionId: string, startDate: Date, isAutoRenew: boolean) {
 
@@ -107,8 +108,43 @@ export class UserSubscriptionService {
 
         await sendpurchaseSubscriptionemail(emailData)
 
+
+        if (!checkUser.customerId) {
+            console.log("User do not have customId")
+            const custom = await this.razorpayService.createRazorpayCustomer(checkUser._id.toString())
+            console.log("custom", custom)
+        }
+
+
+
+        const UserSubScriptionData = {
+            razorpayPlanId: checkSub.razorpayPlanId,
+            isAutoRenew: savedSubscription.isAutoRenew,
+            start_date: savedSubscription.startDate,
+            end_date: savedSubscription.endDate,
+            userId: savedSubscription.userId,
+            name: checkSub.name,
+            price: savedSubscription.price,
+            customerId: checkUser.customerId
+        }
+
+
+
+
+
+
+
+        const userSubscriptionPaymnet = await this.razorpayService.subscriptionPaymnet(UserSubScriptionData)
+
+
+
+
+
+
         return { subscription: savedSubscription, paymentDetails: newPayment };
     };
+
+
 
     public async activateUserSubscription(transactionId: string): Promise<void> {
         try {
