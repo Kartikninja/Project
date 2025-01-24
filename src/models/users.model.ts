@@ -26,7 +26,7 @@ const UserSchema: Schema = new Schema(
     paymentHistory: [{ type: ObjectId, ref: 'Transactions' }],
     lastLogin: { type: Date },
 
-    subscription: { type: ObjectId, ref: 'Subscriptions' },
+    subscription: [{ type: ObjectId, ref: 'Subscriptions' }],
 
     isSubscribed: { type: Boolean, default: false },
 
@@ -54,6 +54,7 @@ const UserSchema: Schema = new Schema(
       required: false
     },
     resetPasswordTokenExpiresAt: { type: Date, required: false },
+    customerId: { type: String, required: true }
 
   },
 

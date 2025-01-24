@@ -19,11 +19,18 @@ const SubscriptionSchema: Schema = new Schema({
         type: [String],
         required: true
     },
+    period: {
+        type: String,
+        required: true,
+        enum: ['daily', 'weekly', 'monthly', 'yearly'],
+        default: 'monthly'
+    },
 
     isActive: {
         type: Boolean,
         deflate: false
     },
+
     createdAt: {
         type: Date,
         default: Date.now
@@ -31,7 +38,8 @@ const SubscriptionSchema: Schema = new Schema({
     updatedAt: {
         type: Date,
         default: Date.now
-    }
+    },
+    razorpayPlanId: { type: String, required: false }
 })
 
 export const SubscriptionModel = model<Subscription & Document>('Subscription', SubscriptionSchema, 'Subscriptions')

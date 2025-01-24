@@ -11,4 +11,6 @@ export interface Subscription {
     isMonthly?: boolean;
     isYearly?: boolean;
     isDaily?: boolean;
+    razorpayPlanId: string
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly'
 }

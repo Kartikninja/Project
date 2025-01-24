@@ -92,7 +92,15 @@ const StoreSchema: Schema = new Schema(
         updatedAt: {
             type: Date,
             default: Date.now
-        }
+        },
+        razorpayContactId: { type: String, required: false },
+        razorpayFundAccountId: { type: String, required: false },
+        payoutBankDetails: {
+            accountNumber: String,
+            ifsc: String,
+            // bankName: String,
+            accountHolderName: String
+        },
     },
     { timestamps: true, versionKey: false }
 );

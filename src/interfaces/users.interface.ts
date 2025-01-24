@@ -1,4 +1,4 @@
-import { Document, Types } from "mongoose";
+import mongoose, { Document, Types } from "mongoose";
 
 export interface Verification {
   token: String;
@@ -24,7 +24,7 @@ export interface User {
   country: string;
   about: string;
   registrationDate: string;
-  subscription: string;
+  subscription: mongoose.Types.ObjectId[];
   profileImage: string;
   phoneNumber: number;
   verifyToken: string;
@@ -43,6 +43,7 @@ export interface User {
   resetPasswordTokenExpiresAt: Date,
   verificationToken: string,
   verificationTokenExpiresAt: Date,
+  customerId?: string
 }
 export interface UserList {
   data: [User];

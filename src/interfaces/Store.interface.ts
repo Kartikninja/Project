@@ -36,6 +36,17 @@ interface Store {
     resetPasswordTokenExpiresAt: Date,
 
 
+
+
+    razorpayContactId?: string;
+    razorpayFundAccountId?: string;
+    payoutBankDetails?: {
+        accountNumber: string;
+        ifsc: string;
+        // bankName: string;
+        accountHolderName: string
+    };
+
 }
 
 export interface StoreDocument extends Store, Document { }
