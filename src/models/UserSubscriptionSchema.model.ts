@@ -57,7 +57,8 @@ const UserSubscriptionSchema: Schema = new Schema({
     price: {
         type: Number,
         required: false
-    }
+    },
+    razorpaySubscriptionId: { type: String, required: false, default: null }
 }, { timestamps: true });
 
 export const UserSubscriptionModel = model<UserSubscription & Document>('UserSubscription', UserSubscriptionSchema, 'UserSubscriptions');
