@@ -43,6 +43,20 @@ export class UserSubscriptionService {
         const startDateSelect = startDate || new Date();
         const endDate = new Date(startDateSelect)
         const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
+
+        const paymentLink = await this.payment.createRazorpayPaymentLink(
+            checkSub.price,
+            userId,
+            'Subscription',
+            newPayment.transactionId,
+            {
+                name: checkUser.fullName,
+                email: checkUser.email,
+                contact: checkUser.phoneNumber,
+            }
+        );
+
+
         // endDate.setMonth(endDate.getMonth() + (checkSub.type === 2 ? 1 : 12))
         endDate.setMinutes(endDate.getMinutes() + 2);
         const userSubscriptionData = {
@@ -109,11 +123,11 @@ export class UserSubscriptionService {
         await sendpurchaseSubscriptionemail(emailData)
 
 
-        if (!checkUser.customerId) {
-            console.log("User do not have customId")
-            const custom = await this.razorpayService.createRazorpayCustomer(checkUser._id.toString())
-            console.log("custom", custom)
-        }
+        // if (!checkUser.customerId) {
+        //     console.log("User do not have customId")
+        //     const custom = await this.razorpayService.createRazorpayCustomer(checkUser._id.toString())
+        //     console.log("custom", custom)
+        // }
 
 
 
@@ -125,7 +139,6 @@ export class UserSubscriptionService {
             userId: savedSubscription.userId,
             name: checkSub.name,
             price: savedSubscription.price,
-            customerId: checkUser.customerId
         }
 
 
@@ -135,13 +148,16 @@ export class UserSubscriptionService {
 
 
         const userSubscriptionPaymnet = await this.razorpayService.subscriptionPaymnet(UserSubScriptionData)
+        userSubscriptionPaymnet.id = savedSubscription.razorpaySubscriptionId;
+
+
+
+        await savedSubscription.save();
 
 
 
 
-
-
-        return { subscription: savedSubscription, paymentDetails: newPayment };
+        return { subscription: savedSubscription, paymentDetails: newPayment, paymentLink: paymentLink.short_url };
     };
 
 
@@ -268,6 +284,26 @@ export class UserSubscriptionService {
     }
 
 
+
+
+
+    public async cancleSubscription(id: string) {
+        const checkSub = await UserSubscriptionModel.findById(id)
+
+        if (checkSub) {
+
+            const razorpaySubScriptionId = checkSub
+
+            checkSub.isActive = false
+            checkSub.startDate = null
+            checkSub.endDate = null
+            checkSub.expiry = null
+            await checkSub.save()
+            return true
+        } else {
+            throw new HttpException(500, 'This subCription is not in database')
+        }
+    }
 
 
 
