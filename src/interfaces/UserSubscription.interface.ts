@@ -13,6 +13,7 @@ export interface UserSubscription extends Document {
     transactionId: string
     paymentStatus: 'paid' | 'unpaid'
     price: number
+    razorpaySubscriptionId: string
 }
 
 

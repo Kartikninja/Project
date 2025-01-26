@@ -135,7 +135,7 @@ export class RazorpayService {
                 customer_notify: false,
                 total_count: 12,
                 start_at: adjustedStartAt,
-                customerId: subScriptionData.customerId,
+                // customerId: subScriptionData.customerId,
                 notes: {
                     user_id: subScriptionData.userId,
                 },
@@ -162,6 +162,20 @@ export class RazorpayService {
         }
     }
 
+
+
+
+    public async cancleSubscription(id: string) {
+        try {
+            const subscription = await razorpay.subscriptions.cancel(id)
+            console.log("cancle subscription", subscription)
+            return subscription
+
+        } catch (err) {
+            console.error('Error in cancelling subscription:', err);
+            throw new HttpException(500, 'Error in Cancle SubScription')
+        }
+    }
 
 
 
