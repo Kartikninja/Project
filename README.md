@@ -22,7 +22,7 @@ Install on production
   npm run build
 ```
 
-**Server:** Node, Express,Typescript,MongoDB/MySQL/PostgreSql
+**Server:** Node, Express,Typescript,MongoDB
 
 ## Authors
 
