@@ -10,8 +10,8 @@ import { Service } from 'typedi';
 
 
 const razorpay = new Razorpay({
-    key_id: "rzp_test_ly2znj2ybm1Qqm",
-    key_secret: "22ZNfSFxTpBBr5U9ycVU19zW",
+    key_id: "rzp_test_oPTupXhgKYgwXA",
+    key_secret: "Y2fY65okD7D08aI9AmWXxCX0",
 })
 
 
@@ -135,7 +135,6 @@ export class RazorpayService {
                 customer_notify: false,
                 total_count: 12,
                 start_at: adjustedStartAt,
-                // customerId: subScriptionData.customerId,
                 notes: {
                     user_id: subScriptionData.userId,
                 },
@@ -151,14 +150,18 @@ export class RazorpayService {
             }
 
 
-
+            console.log("option", option)
             const sub = await razorpay.subscriptions.create(option)
 
             return sub
 
         } catch (err) {
             console.error('Error in subscription payment:', err);
+            if (err.response) {
+                console.error('Error Response:', err.response);
+            }
             throw new HttpException(500, 'Failed to process subscription payment');
+
         }
     }
 

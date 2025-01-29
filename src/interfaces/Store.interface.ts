@@ -5,7 +5,7 @@ interface Location {
     type: string;
     coordinates: [number, number];
 }
-interface Store {
+interface Store extends Document {
 
     _id?: string;
     storeName: string;
