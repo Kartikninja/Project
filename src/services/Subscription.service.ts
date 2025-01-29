@@ -8,8 +8,8 @@ import { Service } from "typedi";
 
 
 const razorpay = new Razorpay({
-    key_id: "rzp_test_ly2znj2ybm1Qqm",
-    key_secret: "22ZNfSFxTpBBr5U9ycVU19zW",
+    key_id: "rzp_test_oPTupXhgKYgwXA",
+    key_secret: "Y2fY65okD7D08aI9AmWXxCX0",
 })
 @Service()
 export class SubscriptionService {

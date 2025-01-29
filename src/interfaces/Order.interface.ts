@@ -8,7 +8,8 @@ export interface OrderProduct {
 }
 
 export interface Order {
-    orderId: string;
+    order_Id: string;
+    paymentId: string
     userId: Schema.Types.ObjectId;
     storeId: Schema.Types.ObjectId;
     products: OrderProduct[];
@@ -18,6 +19,11 @@ export interface Order {
     shippingAddress: string;
     createdAt: Date;
     updatedAt: Date;
-    transactionId: string
+    orderId: string
     discountCode: string
+    taxAmount: number;
+    shippingCost: number;
+    commissionAmount: number
+    amountToSeller: number
+    payoutStatus: 'pending' | 'processed' | 'failed'
 }

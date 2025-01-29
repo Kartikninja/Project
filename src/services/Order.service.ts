@@ -12,6 +12,7 @@ import { SubCategory } from '@/models/SubCategory.model';
 import { NotificationService } from './Notification.service';
 import { sendOrderUpdateEmail, sendPurchaseEmail, sendStatusUpdateEmail } from '@/utils/mailer';
 import { CartItem, DiscountAttributes } from '@/interfaces/Discount.interface';
+import { RazorpayService } from './razorpay.service';
 
 
 
@@ -20,7 +21,7 @@ class OrderService {
 
     private payment = Container.get(PaymentService)
     private notification = Container.get(NotificationService)
-
+    private razorpayService = Container.get(RazorpayService)
 
     public async createOrder(userId: string, orderData: any): Promise<any> {
         const { storeId, products, shippingAddress, discountCode } = orderData;
@@ -66,8 +67,8 @@ class OrderService {
                                 } else {
                                     itemDiscount = discount.value
                                 }
-                                finalPrice = (itemAmount - itemDiscount) * quantity
                             }
+                            finalPrice = (itemAmount - itemDiscount) * quantity
                         }
                     } else {
                         console.log("No valid discount code found.");
@@ -116,12 +117,14 @@ class OrderService {
 
 
             }
+
+
             const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order');
             console.log('payment', payment);
 
-            const orderId = `ORD-${new Date().getTime()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+            const order_Id = `ORD-${new Date().getTime()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
             const order = await OrderModel.create({
-                orderId,
+                order_Id,
                 userId,
                 storeId,
                 products,
@@ -129,7 +132,8 @@ class OrderService {
                 shippingAddress,
                 orderStatus: 'pending',
                 paymentStatus: 'unpaid',
-                transactionId: payment.transactionId,
+                orderId: payment.orderId,
+
             });
 
 
@@ -209,13 +213,12 @@ class OrderService {
                     price: product.finalPrice,
                     quantity: product.quantity
                 })),
-                transactionId: payment.transactionId,
+                orderId: payment.orderId,
                 subject: 'Your Purchase Details',
-                orderId,
+                order_Id,
                 mailTitle: 'Thank you for your purchase!',
 
             };
-
 
             await sendPurchaseEmail(emailDetails)
 
@@ -619,8 +622,8 @@ class OrderService {
         const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order')
         order.products = updatedOrderProducts;
         order.totalPrice = Math.max(totalPrice, 0);
-        order.orderId = UpdatedOrderId
-        order.transactionId = payment.transactionId
+        order.order_Id = UpdatedOrderId
+        order.orderId = payment.orderId
         order.shippingAddress = orderData.shippingAddress
 
 

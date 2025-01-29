@@ -1,10 +1,11 @@
 import { Types } from 'mongoose'
 export interface Payment {
     userId: string;
-    transactionId: string;
+    orderId: string;
     amount: number;
     status: 'paid' | 'unpaid';
     paymentMethod: string;
     createdAt: Date;
-    modelName: string
+    modelName: string;
+    paymentId: string
 }

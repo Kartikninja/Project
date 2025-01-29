@@ -42,13 +42,13 @@ export class UserSubscriptionService {
 
         const startDateSelect = startDate || new Date();
         const endDate = new Date(startDateSelect)
-        const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'SubScription')
+        const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'UserSubScription')
 
         const paymentLink = await this.payment.createRazorpayPaymentLink(
             checkSub.price,
             userId,
-            'Subscription',
-            newPayment.transactionId,
+            'UserSubScription',
+            newPayment.orderId,
             {
                 name: checkUser.fullName,
                 email: checkUser.email,
@@ -68,7 +68,8 @@ export class UserSubscriptionService {
             isAutoRenew,
             expiry: endDate,
             price,
-            transactionId: newPayment.transactionId,
+            orderId: newPayment.orderId,
+
 
         };
         const newUserSubscription = new UserSubscriptionModel(userSubscriptionData);
@@ -122,15 +123,6 @@ export class UserSubscriptionService {
 
         await sendpurchaseSubscriptionemail(emailData)
 
-
-        // if (!checkUser.customerId) {
-        //     console.log("User do not have customId")
-        //     const custom = await this.razorpayService.createRazorpayCustomer(checkUser._id.toString())
-        //     console.log("custom", custom)
-        // }
-
-
-
         const UserSubScriptionData = {
             razorpayPlanId: checkSub.razorpayPlanId,
             isAutoRenew: savedSubscription.isAutoRenew,
@@ -147,8 +139,10 @@ export class UserSubscriptionService {
 
 
 
-        const userSubscriptionPaymnet = await this.razorpayService.subscriptionPaymnet(UserSubScriptionData)
-        userSubscriptionPaymnet.id = savedSubscription.razorpaySubscriptionId;
+        const userSubscriptionPayment = await this.razorpayService.subscriptionPaymnet(UserSubScriptionData)
+
+        savedSubscription.razorpaySubscriptionId = userSubscriptionPayment.id;
+
 
 
 
@@ -157,14 +151,17 @@ export class UserSubscriptionService {
 
 
 
-        return { subscription: savedSubscription, paymentDetails: newPayment, paymentLink: paymentLink.short_url };
+        return {
+            subscription: savedSubscription, paymentDetails: newPayment,
+            paymentLink: paymentLink.short_url
+        };
     };
 
 
 
-    public async activateUserSubscription(transactionId: string): Promise<void> {
+    public async activateUserSubscription(orderId: string): Promise<void> {
         try {
-            const payment = await PaymentModel.findOne({ transactionId });
+            const payment = await PaymentModel.findOne({ orderId });
 
             if (!payment) {
                 throw new Error('Payment not found');
@@ -177,7 +174,7 @@ export class UserSubscriptionService {
 
             const userSubscription = await UserSubscriptionModel.findOne({
                 userId: payment.userId,
-                subscriptionId: payment.transactionId,
+                subscriptionId: payment.orderId,
                 isActive: false
             });
 
@@ -289,11 +286,11 @@ export class UserSubscriptionService {
 
     public async cancleSubscription(id: string) {
         const checkSub = await UserSubscriptionModel.findById(id)
-
+        console.log("checkSub", checkSub)
         if (checkSub) {
 
-            const razorpaySubScriptionId = checkSub
-
+            const razorpaySubScriptionId = await this.razorpayService.cancleSubscription(checkSub.razorpaySubscriptionId)
+            console.log("razorpaySubScriptionId", razorpaySubScriptionId)
             checkSub.isActive = false
             checkSub.startDate = null
             checkSub.endDate = null
