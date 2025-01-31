@@ -13,11 +13,7 @@ export class PayoutRoute {
     }
 
     private initializeRoutes() {
-        this.router.post(
-            `${this.path}/:storeId`,
-            // AuthMiddleware,
-            this.payoutController.createPayout
-        );
+
 
         this.router.get(
             `${this.path}/status/:payoutId`,

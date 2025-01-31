@@ -4,6 +4,13 @@ import { PayoutService } from '@services/payout.service';
 import { Container } from 'typedi';
 import { PayoutModel } from '@/models/Payout.model';
 import { REDIS_HOST, REDIS_PORT } from '@config';
+import Razorpay from 'razorpay';
+
+const razorpayX = new Razorpay({
+    key_id: "rzp_test_kghAwVX1ISLmoi",
+    key_secret: "NnB5pXhUXLranWMEUPuF31L4",
+
+})
 
 export function initializePayoutWorker() {
     console.log("Worker")
@@ -22,6 +29,7 @@ export function initializePayoutWorker() {
                 amount,
                 storeData
             );
+           
 
 
             await PayoutModel.findByIdAndUpdate(payoutId, {
@@ -32,7 +40,7 @@ export function initializePayoutWorker() {
                 error: null,
             });
 
-            
+
 
         } catch (error) {
             await PayoutModel.findByIdAndUpdate(payoutId, {

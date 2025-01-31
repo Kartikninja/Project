@@ -97,8 +97,33 @@ export class PaymentController {
             const payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
             const order = await razorpayInstance.orders.fetch(razorpayOrderId)
 
-            console.log('Razorpay Order Paid:', order.status);
-            console.log('Razorpay Payment Status:', payment.status);
+            console.log('Razorpay Order Paid:', order);
+            console.log('Razorpay Payment Status:', payment);
+
+
+            const existingPayment = await PaymentModel.findOne({ orderId: razorpayOrderId })
+
+            existingPayment.amount = Number(payment.amount) / 100
+            existingPayment.email = payment.email
+            existingPayment.paymentId = payment.id
+            existingPayment.contact = String(payment.contact)
+            existingPayment.vpa = payment.vpa || null
+            existingPayment.wallet = payment.wallet || null
+            existingPayment.amountRefunded = payment.amount_refunded || null
+            existingPayment.refundStatus = String(payment.amount_refunded)
+            existingPayment.fee = payment.fee
+            existingPayment.tax = payment.tax
+            existingPayment.errorCode = payment.error_code
+            existingPayment.errorDescription = payment.error_description
+            existingPayment.acquirerData = {
+                rrn: payment.acquirer_data?.rrn || null,
+                upiTransactionId: payment.acquirer_data?.upi_transaction_id || null,
+            };
+
+
+
+            await existingPayment.save();
+
 
             if (payment.status === 'captured') {
                 if (order.status !== 'paid') {
@@ -189,7 +214,7 @@ export class PaymentController {
                     storeId: (updatedOrder.storeId as unknown as StoreDocument)._id,
                     orderId: updatedOrder._id,
                     status: 'pending',
-                    purpose: 'order-payout'
+                    purpose: 'payout'
                 });
                 const productStockUpdates = updatedOrder.products.map(product => ({
 
@@ -374,3 +399,4 @@ export class PaymentController {
         }
 
     }
+}

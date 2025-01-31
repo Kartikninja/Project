@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { PaymentModel } from '@models/Payment.model';
-import { Payment } from '@interfaces/Payment.interface';
+import { Payment, PaymentDocument } from '@interfaces/Payment.interface';
 import { HttpException } from '@exceptions/httpException';
 import Razorpay from 'razorpay';
 
@@ -18,32 +18,46 @@ export class PaymentService {
 
 
 
-    public async createRazorpayOrder(amount: number, userId: string, paymentMethod: string, modelName: string): Promise<Payment> {
+    public async createRazorpayOrder(amount: number, userId: string, paymentMethod: string, modelName: string): Promise<PaymentDocument> {
         const options = {
             amount: amount * 100,
             currency: 'INR',
             receipt: `order_receipt_${new Date().getTime()}`,
             payment_capture: 1,
+            notes: { userId: userId },
         };
         try {
             const order = await razorpayInstance.orders.create(options)
-
             const paymentData: Payment = {
                 userId,
-                paymentId: null,
+                paymentId: '',
                 orderId: order.id,
                 amount,
+                currency: 'INR',
                 status: 'unpaid',
                 paymentMethod,
-                modelName,
+                email: '',
+                contact: '',
+                vpa: null,
+                wallet: null,
+                bank: null,
+                amountRefunded: 0,
+                refundStatus: null,
+                fee: 0,
+                tax: 0,
+                errorCode: null,
+                errorDescription: null,
+                acquirerData: {
+                    rrn: null,
+                    upiTransactionId: null,
+                },
                 createdAt: new Date(),
+                updatedAt: new Date(),
+                modelName,
             };
-            const newPayment = await this.createPayment(paymentData);
-
-
-
-            return newPayment;
-
+            const newPayment = new PaymentModel(paymentData);
+            await newPayment.save()
+            return newPayment
 
         } catch (error) {
             console.log("Error ", error)
