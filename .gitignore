@@ -57,3 +57,8 @@ Thumbs.db
 
 # Ignore logger file
 /src/utils/logger.ts
+
+
+# Ignore package file
+package-lock.json
+package.json

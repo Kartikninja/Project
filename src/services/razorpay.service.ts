@@ -9,11 +9,23 @@ import { Service } from 'typedi';
 
 
 
+
 const razorpay = new Razorpay({
     key_id: "rzp_test_oPTupXhgKYgwXA",
     key_secret: "Y2fY65okD7D08aI9AmWXxCX0",
 })
 
+
+
+
+const RAZORPAYX_API_BASE = 'https://api.razorpay.com/v1';
+const RAZORPAYX_KEY_ID = 'rzp_test_kghAwVX1ISLmoi';
+const RAZORPAYX_KEY_SECRET = 'NnB5pXhUXLranWMEUPuF31L4';
+
+const razorpayXAuthHeader = {
+    Authorization: `Basic ${Buffer.from(`${RAZORPAYX_KEY_ID}:${RAZORPAYX_KEY_SECRET}`).toString('base64')}`,
+    'Content-Type': 'application/json',
+};
 
 @Service()
 
@@ -44,7 +56,7 @@ export class RazorpayService {
         }
     }
 
-    public async createCustomer(store: any) {
+    public async createContact(store: any) {
         const contactData = {
             name: store.fullName,
             email: store.email,
@@ -58,16 +70,19 @@ export class RazorpayService {
             }
         };
         try {
-            const customer = await razorpay.customers.create(contactData);
-            return customer;
+
+            const response = await axios.post(`${RAZORPAYX_API_BASE}/contacts`, contactData, { headers: razorpayXAuthHeader })
+            console.log("createContact function call", response)
+
+            return response.data;
         } catch (error) {
-            throw new Error(`Error creating customer: ${error.message}`);
+            throw new Error(`Error creating customer: ${error.response.data.error.description}`);
         }
     }
 
     public async createFundAccount(contactId: string, bankDetails: any) {
         const fundAccountData = {
-            customer_id: contactId,
+            contact_id: contactId,
             account_type: 'bank_account',
             bank_account: {
                 name: bankDetails.accountHolderName,
@@ -76,10 +91,11 @@ export class RazorpayService {
             },
         };
         try {
-            const fundAccount = await razorpay.fundAccount.create(fundAccountData);
-            return fundAccount;
+            const response = await axios.post(`${RAZORPAYX_API_BASE}/fund_accounts`, fundAccountData, { headers: razorpayXAuthHeader })
+            console.log("createFundAccount function call", this.createFundAccount)
+            return response.data;
         } catch (error) {
-            throw new Error(`Error creating fund account: ${error.message}`);
+            throw new Error(`Error creating fund account: ${error.response.data.error.description}`);
         }
     }
 

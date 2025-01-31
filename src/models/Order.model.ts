@@ -3,7 +3,7 @@ import { Order } from '@interfaces/Order.interface'
 
 const OrderSchema: Schema = new Schema<Order>(
     {
-        orderId: {
+        order_Id: {
             type: String,
             required: false,
             unique: true
@@ -58,7 +58,8 @@ const OrderSchema: Schema = new Schema<Order>(
             type: String,
             required: true
         },
-        transactionId: { type: String, required: false },
+        orderId: { type: String, required: false },
+        paymentId: { type: String, required: false, default: null },
         discountCode: { type: String, required: false },
         createdAt: {
             type: Date,
@@ -67,7 +68,17 @@ const OrderSchema: Schema = new Schema<Order>(
         updatedAt: {
             type: Date,
             default: Date.now
-        }
+        },
+        commissionAmount: { type: Number, required: false, default: 0 },
+        amountToSeller: { type: Number, required: false, default: 0 },
+        payoutStatus: {
+            type: String,
+            enum: ['pending', 'processed', 'failed'],
+            default: 'pending'
+        },
+
+        taxAmount: { type: Number, default: 0 },
+        shippingCost: { type: Number, default: 0 }
     },
     {
         timestamps: true

@@ -2,7 +2,7 @@ import { config } from "dotenv";
 config({ path: `.env.${process.env.NODE_ENV || "development"}.local` });
 
 export const CREDENTIALS = process.env.CREDENTIALS === "true";
-export const { NODE_ENV, PORT, SECRET_KEY, LOG_FORMAT, LOG_DIR, ORIGIN, REDIS_HOST, REDIS_PORT } =
+export const { RAZORPAYX_API_KEY, RAZORPAYX_ACCOUNT_NUMBER, RAZORPAYX_API_SECRET, RAZORPAYX_WEBHOOK_SECRET, RAZORPAY_API_SECRET, RAZORPAY_API_KEY, WEBHOOK_SECRET, NODE_ENV, PORT, SECRET_KEY, LOG_FORMAT, LOG_DIR, ORIGIN, REDIS_HOST, REDIS_PORT } =
   process.env;
 export const { DB_URL } = process.env;
 

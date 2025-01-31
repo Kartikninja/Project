@@ -7,7 +7,7 @@ export class RazorpayController {
     public createCustomer = async (req: Request, res: Response, next: NextFunction) => {
         const { email, contact, name } = req.body;
         try {
-            const customer = await this.razorpayService.createCustomer(req.body);
+            const customer = await this.razorpayService.createContact(req.body);
             res.status(200).json({ message: 'Customer created successfully', data: customer });
         } catch (error) {
             next(error)

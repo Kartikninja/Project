@@ -18,6 +18,7 @@ import Redis, { Redis as RedisClient } from 'ioredis'
 import { cron1 } from './utils/corn/node-corn';
 import { initializeSocket } from './utils/socket/socket';
 import { Server } from 'socket.io';
+import { initializePayoutWorker } from './workers/payout.worker';
 
 
 export class App {
@@ -61,7 +62,19 @@ export class App {
     this.initializeCron()
 
 
+    this.initializeBullMQWorker();
+
+
   }
+
+
+
+  private async initializeBullMQWorker() {
+  
+    initializePayoutWorker()
+  }
+
+
 
   public async listen() {
     await new Promise((resolve, reject) => {
@@ -127,10 +140,15 @@ export class App {
   private initializeMiddlewares() {
 
     this.app.use(cors({ origin: 'http://localhost:5173', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }));
+    // this.app.use(express.json());
+    this.app.use(express.json({
+      verify: (req, res, buf) => {
+        (req as any).rawBody = buf;
+      }
+    }));
+    this.app.use(express.urlencoded({ extended: true }));
     this.app.use(hpp());
     this.app.use(compression());
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
     this.app.use(cookieParser());
     this.app.disable('x-powered-by');
 

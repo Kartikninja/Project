@@ -32,6 +32,7 @@ const StoreSchema: Schema = new Schema(
             required: true,
             trim: true,
             match: [/^\S+@\S+\.\S+$/, 'Invalid email format'],
+            unique: true
         },
         password: {
             type: String,
@@ -42,6 +43,7 @@ const StoreSchema: Schema = new Schema(
             required: true,
             trim: true,
             match: [/^\+?\d{7,15}$/, 'Invalid phone number format'],
+            unique: true
         },
         address: {
             type: String,
@@ -77,7 +79,7 @@ const StoreSchema: Schema = new Schema(
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
         isActive: {
             type: Boolean,
-            default: true
+            default: false
         },
         resetPasswordToken: {
             type: String,
@@ -98,9 +100,10 @@ const StoreSchema: Schema = new Schema(
         payoutBankDetails: {
             accountNumber: String,
             ifsc: String,
-            // bankName: String,
+
             accountHolderName: String
         },
+        // razorpayAccountId: { type: String, required: true },
     },
     { timestamps: true, versionKey: false }
 );

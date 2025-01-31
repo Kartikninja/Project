@@ -3,63 +3,38 @@
 import { Schema, model, Document } from 'mongoose';
 
 interface Payout extends Document {
-    amount: number;
+    payoutAmount: number;
     currency: string;
-    fundAccountId: string;
+    razorpayFundAccountId: string;
     storeId: Schema.Types.ObjectId;
     razorpayPayoutId: string;
-    status: string;
-    fees: number;
+    status: 'pending' | 'processed' | 'failed' | 'reversed', "success";
+    orderId: Schema.Types.ObjectId
     utr: string;
-    purpose: string;
+    purpose: 'order-payout' | 'refund' | 'other';
+    error: string
+    commission: number;
+    initiatedAt: Date;
+    processedAt: Date;
+    transactionId: string
+
 }
 
 const PayoutSchema = new Schema<Payout>({
-    amount: { type: Number, required: true },
+    payoutAmount: { type: Number, required: true },
     currency: { type: String, default: 'INR' },
-    fundAccountId: { type: String, required: true },
+    razorpayFundAccountId: { type: String, required: true },
+    commission: { type: Number, required: true },
     storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
-    razorpayPayoutId: { type: String, required: true },
-    status: { type: String, default: 'pending' },
-    fees: Number,
+    razorpayPayoutId: { type: String, required: false },
+    orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
+    status: { type: String, enum: ['pending', 'processed', 'success', 'failed', 'reversed'], default: 'pending' },
+    error: { type: String, maxlength: 500 },
     utr: String,
-    purpose: { type: String, default: 'payout' }
+    purpose: { type: String, enum: ['order-payout', 'refund', 'other'], default: 'order-payout' },
+    initiatedAt: { type: Date, default: Date.now },
+    processedAt: { type: Date },
+    transactionId: { type: String, default: null }
 }, { timestamps: true });
 
 export const PayoutModel = model<Payout>('Payout', PayoutSchema);
-
-
-
-
-
-// import { Schema, model } from "mongoose";
-
-// const PayoutSchema = new Schema(
-//     {
-//         storeId: {
-//             type: Schema.Types.ObjectId,
-//             ref: "Store",
-//             required: true,
-//         },
-//         amount: {
-//             type: Number,
-//             required: true,
-//         },
-//         status: {
-//             type: String,
-//             enum: ["requested", "approved", "paid"],
-//             default: "requested",
-//         },
-//         requestedAt: {
-//             type: Date,
-//             default: Date.now,
-//         },
-//         paidAt: {
-//             type: Date,
-//         },
-//     },
-//     { timestamps: true }
-// );
-
-// export const PayoutModel = model("Payout", PayoutSchema);
-

@@ -5,16 +5,13 @@ import { HttpException } from '@exceptions/httpException';
 import Razorpay from 'razorpay';
 
 const razorpayInstance = new Razorpay({
-    key_secret: "22ZNfSFxTpBBr5U9ycVU19zW",
-    key_id: "rzp_test_ly2znj2ybm1Qqm"
+    key_secret: "Y2fY65okD7D08aI9AmWXxCX0",
+    key_id: "rzp_test_oPTupXhgKYgwXA"
 })
 
-// [convert]:: ToBase64String([System.Text.Encoding]:: UTF8.GetBytes("rzp_test_ly2znj2ybm1Qqm:22ZNfSFxTpBBr5U9ycVU19zW"))
-
-// echo - n "rzp_test_ly2znj2ybm1Qqm:22ZNfSFxTpBBr5U9ycVU19zW" | base64
 
 
-// cnpwX3Rlc3RfWXFHWmJ6UWlMMDhXMUI6TEhuZTE5TE1MMzNtYlBVa1hUWFJUOGxn
+
 
 @Service()
 export class PaymentService {
@@ -22,19 +19,19 @@ export class PaymentService {
 
 
     public async createRazorpayOrder(amount: number, userId: string, paymentMethod: string, modelName: string): Promise<Payment> {
+        const options = {
+            amount: amount * 100,
+            currency: 'INR',
+            receipt: `order_receipt_${new Date().getTime()}`,
+            payment_capture: 1,
+        };
         try {
-            const options = {
-                amount: amount * 100,
-                currency: 'INR',
-                receipt: `order_receipt_${new Date().getTime()}`,
-                payment_capture: 1,
-            };
-
             const order = await razorpayInstance.orders.create(options)
-            console.log("payment createRazorpayOrder", order)
+
             const paymentData: Payment = {
                 userId,
-                transactionId: order.id,
+                paymentId: null,
+                orderId: order.id,
                 amount,
                 status: 'unpaid',
                 paymentMethod,
@@ -42,6 +39,9 @@ export class PaymentService {
                 createdAt: new Date(),
             };
             const newPayment = await this.createPayment(paymentData);
+
+
+
             return newPayment;
 
 
@@ -51,6 +51,41 @@ export class PaymentService {
         }
     }
 
+    public async createRazorpayPaymentLink(
+        amount: number,
+        userId: string,
+        modelName: string,
+        orderId: string,
+        userDetails: { name: string; email: string; contact: number }
+    ): Promise<any> {
+        try {
+            const optionsforlink = {
+                amount: amount * 100, // Amount in paise
+                currency: 'INR',
+                accept_partial: false,
+                reference_id: orderId, // Razorpay order ID
+                description: `Payment for ${modelName}`,
+                customer: {
+                    name: userDetails.name,
+                    contact: userDetails.contact,
+                    email: userDetails.email,
+                },
+                notify: {
+                    sms: true,
+                    email: true,
+                },
+                callback_url: 'https://maple-atom-builders-textiles.trycloudflare.com/api/v1/payment/verify/payment',
+                callback_method: 'get',
+            };
+
+            const link = await razorpayInstance.paymentLink.create(optionsforlink);
+
+            return link;
+        } catch (error) {
+            console.log("Error in createRazorpayPaymentLink:", error);
+            throw new HttpException(500, "Error creating Razorpay Payment Link");
+        }
+    }
 
 
     public async createPayment(paymentData: Payment): Promise<Payment> {
@@ -64,10 +99,10 @@ export class PaymentService {
         }
     }
 
-    public async updatePaymentStatus(transactionId: string, status: string): Promise<Payment | null> {
+    public async updatePaymentStatus(orderId: string, status: string): Promise<Payment | null> {
         try {
             const payment = await PaymentModel.findOneAndUpdate(
-                { transactionId },
+                { orderId },
                 { status },
                 { new: true }
             );

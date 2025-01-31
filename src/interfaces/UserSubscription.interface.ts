@@ -10,7 +10,7 @@ export interface UserSubscription extends Document {
     createdAt: Date;
     updatedAt: Date;
     expiry: Date | null
-    transactionId: string
+    orderId: string
     paymentStatus: 'paid' | 'unpaid'
     price: number
     razorpaySubscriptionId: string

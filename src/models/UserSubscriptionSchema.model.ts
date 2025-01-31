@@ -37,9 +37,10 @@ const UserSubscriptionSchema: Schema = new Schema({
         required: false,
         default: null
     },
-    transactionId: {
+    paymentId: {
         type: String,
         required: false,
+        default: null
     },
     paymentStatus: {
         type: String,
@@ -58,6 +59,7 @@ const UserSubscriptionSchema: Schema = new Schema({
         type: Number,
         required: false
     },
+    orderId: { type: String, required: false, default: null },
     razorpaySubscriptionId: { type: String, required: false, default: null }
 }, { timestamps: true });
 
