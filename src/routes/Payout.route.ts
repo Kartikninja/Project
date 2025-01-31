@@ -24,5 +24,7 @@ export class PayoutRoute {
             AuthMiddleware,
             this.payoutController.getPayoutStatus
         );
+        // https://for-sides-wound-principal.trycloudflare.com/payouts/razorpayx-payout-webhook
+        this.router.post(`${this.router}/razorpayx-payout-webhook`, this.payoutController.razorpayXwebhook)
     }
 }

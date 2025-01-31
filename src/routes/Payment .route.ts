@@ -2,6 +2,7 @@ import { PaymentController } from "@/controllers/Payment.controller";
 import { Routes } from "@/interfaces/routes.interface";
 import { isAdmin } from "@/middlewares/auth.middleware";
 import { Router } from "express";
+import crypto from 'crypto'
 
 export class PaymentRouter implements Routes {
     public path = '/payment'
@@ -21,6 +22,6 @@ export class PaymentRouter implements Routes {
         this.router.post(`${this.path}/verify/payment`, this.payment.verifyPayment)
 
         this.router.get(`${this.path}/admin/getAll`, isAdmin, this.payment.getAllPaymnet)
+     
     }
-
 }

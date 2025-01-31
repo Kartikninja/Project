@@ -15,12 +15,17 @@ export class UserSubscriptionController {
 
 
             const { startDate, isAutoRenew } = req.body;
-            const { subscription, paymentDetails } = await this.userSub.addSubscription(userId, subscriptionId, startDate, isAutoRenew);
-            res.json({ message: "Subscription added successfully", status: true, subscription, paymentDetails });
-        } catch (error) {
-            next(error);
-        }
-    };
+            const { subscription, paymentDetails,
+                 paymentLink
+            } = await this.userSub.addSubscription(userId, subscriptionId, startDate, isAutoRenew);
+            res.json({
+                message: "Subscription added successfully", status: true, subscription, paymentDetails,
+                 paymentLink
+                 });
+            } catch (error) {
+                next(error);
+            }
+        };
 
 
     public getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -47,6 +52,24 @@ export class UserSubscriptionController {
             const id = req.params.id;
             const result = await this.userSub.deleteSubscription(id);
             res.json({ message: "Subscription deleted successfully", status: true, result });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+
+
+
+    public cancleSubscription = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const id = req.params.id;
+            const result = await this.userSub.cancleSubscription(id);
+
+            if (result === true) {
+                res.json({ message: "Subscription deleted successfully", status: true });
+            } else {
+                res.status(404).json({ message: "Subscription not found", status: false });
+            }
         } catch (error) {
             next(error);
         }

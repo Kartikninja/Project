@@ -36,7 +36,7 @@ interface Store extends Document {
     resetPasswordTokenExpiresAt: Date,
 
 
-
+    // razorpayAccountId:string;
 
     razorpayContactId?: string;
     razorpayFundAccountId?: string;

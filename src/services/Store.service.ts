@@ -13,6 +13,7 @@ import { sign, verify } from 'jsonwebtoken';
 import { DataStoredInToken, TokenData } from "@/interfaces/auth.interface";
 import { NotificationService } from "./Notification.service";
 import { RazorpayService } from "@services/razorpay.service";
+import Razorpay from "razorpay";
 
 
 
@@ -41,6 +42,11 @@ const verifyToken = (token: string): DataStoredInToken => {
 };
 
 
+const razorpayX = new Razorpay({
+    key_id: "rzp_test_kghAwVX1ISLmoi",
+    key_secret: "NnB5pXhUXLranWMEUPuF31L4",
+
+})
 
 @Service()
 export class StoreService {
@@ -75,10 +81,14 @@ export class StoreService {
             let razorpayContact, razorpayFundAccount;
 
             try {
-                razorpayContact = await this.razorpay.createCustomer(storeData)
-                console.log("razorpayContact", razorpayContact)
                 const bankDetails = storeData.payoutBankDetails
+
+
+                razorpayContact = await this.razorpay.createContact(storeData)
+                console.log("razorpayContact", razorpayContact)
                 console.log("bankDetails", bankDetails)
+
+
                 razorpayFundAccount = await this.razorpay.createFundAccount(razorpayContact.id, {
                     accountHolderName: storeData.fullName,
                     accountNumber: bankDetails.accountNumber,
