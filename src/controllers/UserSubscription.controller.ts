@@ -16,16 +16,16 @@ export class UserSubscriptionController {
 
             const { startDate, isAutoRenew } = req.body;
             const { subscription, paymentDetails,
-                 paymentLink
+                paymentLink
             } = await this.userSub.addSubscription(userId, subscriptionId, startDate, isAutoRenew);
             res.json({
                 message: "Subscription added successfully", status: true, subscription, paymentDetails,
-                 paymentLink
-                 });
-            } catch (error) {
-                next(error);
-            }
-        };
+                paymentLink
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
 
     public getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -62,14 +62,14 @@ export class UserSubscriptionController {
 
     public cancleSubscription = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const id = req.params.id;
-            const result = await this.userSub.cancleSubscription(id);
+            const userId = req.user._id
+            const subscriptionId = req.params.subscriptionId;
+            const cancellationReason = typeof req.body.cancellationReason === 'string'
+                ? req.body.cancellationReason
+                : 'User requested cancellation'; const result = await this.userSub.cancleSubscription(userId, subscriptionId, cancellationReason);
 
-            if (result === true) {
-                res.json({ message: "Subscription deleted successfully", status: true });
-            } else {
-                res.status(404).json({ message: "Subscription not found", status: false });
-            }
+            res.status(200).json({ message: "Refund Initiate", result })
+
         } catch (error) {
             next(error);
         }

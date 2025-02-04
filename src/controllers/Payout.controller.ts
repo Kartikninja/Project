@@ -13,7 +13,7 @@ import { OrderModel } from '@/models/Order.model';
 export class PayoutController {
     private payoutService = Container.get(PayoutService);
 
-
+ 
     public getPayoutStatus = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { payoutId } = req.params;
@@ -113,7 +113,7 @@ export class PayoutController {
 
     }
 
-
+x
     public async handlePayoutFailure(payoutData: any) {
         await PayoutModel.findOneAndUpdate(
             { payoutId: payoutData.id },

@@ -10,8 +10,14 @@ import { sendpurchaseSubscriptionemail, sendSubscriptionExpiryEmail } from "@/ut
 import { User } from "@/interfaces/users.interface";
 import { UserPurchaseSubScription, UserSubscription } from "@/interfaces/UserSubscription.interface";
 import { RazorpayService } from "./razorpay.service";
+import Razorpay from "razorpay";
+import mongoose from "mongoose";
 
 
+const razorpay = new Razorpay({
+    key_id: "rzp_test_oPTupXhgKYgwXA",
+    key_secret: "Y2fY65okD7D08aI9AmWXxCX0",
+})
 
 
 @Service()
@@ -58,7 +64,8 @@ export class UserSubscriptionService {
 
 
         // endDate.setMonth(endDate.getMonth() + (checkSub.type === 2 ? 1 : 12))
-        endDate.setMinutes(endDate.getMinutes() + 2);
+        endDate.setMinutes(endDate.getMonth() + 2);
+
         const userSubscriptionData = {
             userId,
             subscriptionId,
@@ -72,6 +79,8 @@ export class UserSubscriptionService {
 
 
         };
+
+        console.log("userSubscriptionData", userSubscriptionData)
         const newUserSubscription = new UserSubscriptionModel(userSubscriptionData);
 
         const savedSubscription = await newUserSubscription.save();
@@ -279,29 +288,149 @@ export class UserSubscriptionService {
 
         console.log(`Checked and updated ${expiredSubscriptions.length} expired subscriptions.`);
     }
+    // const payment = await PaymentModel.findOne({ paymentId: checkSub.paymentId, orderId: checkSub.orderId });
+    // if (!payment) {
+    //     throw new Error('Payment not found for subscription');
+    // }
+    // if (refund.status === 'processed') {
+    //     payment.refundStatus = 'processed';
+    //     payment.amountRefunded = refund.amount / 100;
+    //     await payment.save();
+    //     checkSub.refundStatus = 'refunded';
+    //     checkSub.refundAmount = refundAmount;
+    //     checkSub.cancellationReason = cancellationReason;
+    //     checkSub.refundId = refund.id
+    //     checkSub.endDate = new Date();
+    //     await checkSub.save();
+    // } else {
+    //     checkSub.refundStatus = 'failed'
+    //     payment.refundStatus = 'failed'
+    //     await payment.save();
+    //     await checkSub.save()
+    //     throw new HttpException(400, 'Refund processing failed');
+
+    // }
+
+    //   checkSub.isActive = false
+    //                 checkSub.endDate = new Date();
+    //                 checkSub.cancelledAt = new Date()
+    //                 checkSub.isAutoRenew = null
+    //                 checkSub.expiry = null
 
 
+    public async cancleSubscription(userId: string, subscriptionId: string, cancellationReason?: string) {
+
+        const checkSub = await UserSubscriptionModel.findOne({
+            subscriptionId: new mongoose.Types.ObjectId(subscriptionId),
+            userId: new mongoose.Types.ObjectId(userId),
+            isActive: true
+        }).populate('subscriptionId');
 
 
-
-    public async cancleSubscription(id: string) {
-        const checkSub = await UserSubscriptionModel.findById(id)
-        console.log("checkSub", checkSub)
-        if (checkSub) {
-
-            const razorpaySubScriptionId = await this.razorpayService.cancleSubscription(checkSub.razorpaySubscriptionId)
-            console.log("razorpaySubScriptionId", razorpaySubScriptionId)
-            checkSub.isActive = false
-            checkSub.startDate = null
-            checkSub.endDate = null
-            checkSub.expiry = null
-            await checkSub.save()
-            return true
-        } else {
-            throw new HttpException(500, 'This subCription is not in database')
+        if (!checkSub) {
+            throw new HttpException(404, 'Subscription not found');
         }
+
+        if (checkSub.refundStatus === 'pending' || checkSub.refundStatus === 'refunded') {
+            throw new HttpException(400, 'Refund already initiated or completed');
+        }
+
+
+        const purchaseDate = checkSub.createdAt
+        const cancellationWindow = 24 * 60 * 60 * 1000
+        const isEligible = Date.now() - purchaseDate.getTime() < cancellationWindow
+        if (!isEligible) {
+            throw new HttpException(400, 'Refund window expired');
+
+        }
+
+
+        const daysUsed = Math.floor(
+            (Date.now() - checkSub.startDate.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        const refundAmount = daysUsed > 0 ?
+            Math.max(0, checkSub.price - (daysUsed * (checkSub.price / 30))) :
+            checkSub.price;
+
+
+
+        try {
+
+
+            const cancelResponse = await razorpay.subscriptions.cancel(checkSub.razorpaySubscriptionId, false)
+            console.log("refundProcces", cancelResponse)
+            if (cancelResponse.status === 'cancelled') {
+
+                console.log("=====Subscription Cancle function in procees starting for refund=====")
+                const refund = await razorpay.payments.refund(checkSub.paymentId, {
+                    amount: refundAmount * 100,
+                    speed: 'normal',
+                    notes: {
+                        reason: String(cancellationReason || 'user_requested'),
+                        cancelled_by: String(userId)
+
+                    }
+                })
+                checkSub.refundStatus = 'pending'
+                checkSub.refundId = refund.id;
+                await checkSub.save()
+                console.log("refund", refund)
+
+
+
+
+            } else {
+                throw new HttpException(400, 'Failed to cancel subscription');
+            }
+
+
+            return {
+                success: true,
+
+                amount: refundAmount,
+                message: 'Refund initiated successfully'
+            };
+        } catch (error) {
+            console.error('Refund error:', error);
+            checkSub.refundStatus = 'failed';
+            await checkSub.save();
+
+            throw new HttpException(500, 'Refund processing failed');
+        }
+
+
     }
+
+
+    // private async processRefund(subscription: UserSubscription): Promise<void> {
+    //     try {
+    //         const payment = await PaymentModel.findOne({ paymentId: subscription.paymentId, orderId: subscription.orderId });
+    //         if (!payment) {
+    //             throw new Error('Payment not found for subscription');
+    //         }
+
+
+    //         if (payment.amount > 0 && payment.refundStatus !== 'processed') {
+    //             const refundResponse = await razorpay.payments.refund(payment.paymentId, { amount: payment.amount });
+
+    //             payment.refundStatus = 'processed';
+    //             payment.amountRefunded = refundResponse.amount / 100; // Amount in INR
+    //             await payment.save();
+
+    //             // Optionally, update the subscription status based on refund processing
+    //             subscription.refundStatus = 'processed';
+    //             await subscription.save();
+    //         }
+    //     } catch (error) {
+    //         console.error('Error processing refund:', error);
+    //         throw new Error('Refund processing failed');
+    //     }
+    // }
 
 
 
 }
+
+
+
+

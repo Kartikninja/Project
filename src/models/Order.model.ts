@@ -51,7 +51,7 @@ const OrderSchema: Schema = new Schema<Order>(
         },
         paymentStatus: {
             type: String,
-            enum: ['paid', 'unpaid'],
+            enum: ['paid', 'unpaid', 'refunded'],
             default: 'unpaid'
         },
         shippingAddress: {
@@ -71,14 +71,11 @@ const OrderSchema: Schema = new Schema<Order>(
         },
         commissionAmount: { type: Number, required: false, default: 0 },
         amountToSeller: { type: Number, required: false, default: 0 },
-        payoutStatus: {
-            type: String,
-            enum: ['pending', 'processed', 'failed'],
-            default: 'pending'
-        },
 
+        payoutStatus: { type: String, enum: ['pending', 'processed', 'processing', 'rejected', 'reversed', "queued", "failed"], default: 'pending' },
         taxAmount: { type: Number, default: 0 },
         shippingCost: { type: Number, default: 0 }
+
     },
     {
         timestamps: true

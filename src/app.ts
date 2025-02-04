@@ -70,7 +70,7 @@ export class App {
 
 
   private async initializeBullMQWorker() {
-  
+
     initializePayoutWorker()
   }
 

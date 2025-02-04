@@ -19,6 +19,6 @@ export class UserSubscriptionRoute implements Routes {
         this.router.get(`${this.path}/getAll`, this.userSubscriptionController.getAll)
         this.router.get(`${this.path}/:id`, this.userSubscriptionController.getById)
         this.router.delete(`${this.path}/:id`, isAdmin, this.userSubscriptionController.delete)
-        this.router.post(`${this.path}/cancle/:id`, this.userSubscriptionController.cancleSubscription)
+        this.router.post(`${this.path}/cancle/:subscriptionId`, AuthMiddleware, this.userSubscriptionController.cancleSubscription)
     }
 }
