@@ -60,6 +60,66 @@ export class PaymentController {
         }
     }
 
+    // if (payment.status === 'captured') {
+    //     if (order.status !== 'paid') {
+    //         throw new HttpException(400, 'Payment captured but order not marked as paid');
+
+    //     }
+    //     const result = await this.handleSuccessfulPayment(
+    //         razorpayOrderId,
+    //         razorpayPaymentId
+    //     );
+
+    //     return res.status(result.status).json(result);
+    // }
+
+    // if (payment.status === 'failed') {
+    //     await PaymentModel.findOneAndUpdate(
+    //         { orderId: razorpayOrderId },
+    //         { status: 'failed' }
+    //     );
+    //     await OrderModel.findByIdAndUpdate(
+    //         { orderId: razorpayOrderId },
+    //         { orderStatus: 'cancelled', paymentStatus: 'unpaid', payoutStatus: 'failed' },
+    //         { new: true }
+    //     )
+    //     return res.status(400).json({ message: 'Payment failed' });
+    // }
+
+    // return res.status(202).json({
+    //     message: `Payment processing - current status: ${payment.status}`,
+    //     status: payment.status
+    // });
+
+
+
+    // const existingPayment = await PaymentModel.findOne({ orderId: razorpayOrderId })
+    // existingPayment.amount = Number(payment.amount) / 100
+    // existingPayment.email = payment.email
+    // existingPayment.paymentId = payment.id
+    // existingPayment.contact = String(payment.contact)
+    // existingPayment.vpa = payment.vpa || null
+    // existingPayment.wallet = payment.wallet || null
+    // existingPayment.amountRefunded = payment.amount_refunded || null
+    // existingPayment.refundStatus = String(payment.amount_refunded)
+    // existingPayment.fee = payment.fee
+    // existingPayment.tax = payment.tax
+    // existingPayment.errorCode = payment.error_code
+    // existingPayment.errorDescription = payment.error_description
+    // existingPayment.acquirerData = {
+    //     rrn: payment.acquirer_data?.rrn || null,
+    //     upiTransactionId: payment.acquirer_data?.upi_transaction_id || null,
+    // };
+
+
+
+    // await existingPayment.save();
+
+    // if (!razorpayOrderId || !razorpayPaymentId) {
+    //     throw new HttpException(400, 'Missing payment identifiers');
+    // }
+
+
     public async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
         const signature = req.headers['x-razorpay-signature'] as string;
         const payload = req.body;
@@ -83,79 +143,100 @@ export class PaymentController {
                     .digest('hex');
             }
 
+            console.log("payload", payload)
+            console.log("req.headers", req.headers)
+
+            console.log("payload.event", payload.event)
+
             if (!signature || generatedSignature !== signature) {
                 throw new HttpException(400, 'Invalid/missing signature');
             }
 
-            razorpayOrderId = payload.razorpayOrderId || payload.payload?.payment?.entity?.order_id;
-            razorpayPaymentId = payload.razorpayPaymentId || payload.payload?.payment?.entity?.id;
-
-            if (!razorpayOrderId || !razorpayPaymentId) {
-                throw new HttpException(400, 'Missing payment identifiers');
-            }
-
-            const payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
-            const order = await razorpayInstance.orders.fetch(razorpayOrderId)
-
-            console.log('Razorpay Order Paid:', order);
-            console.log('Razorpay Payment Status:', payment);
 
 
-            const existingPayment = await PaymentModel.findOne({ orderId: razorpayOrderId })
-
-            existingPayment.amount = Number(payment.amount) / 100
-            existingPayment.email = payment.email
-            existingPayment.paymentId = payment.id
-            existingPayment.contact = String(payment.contact)
-            existingPayment.vpa = payment.vpa || null
-            existingPayment.wallet = payment.wallet || null
-            existingPayment.amountRefunded = payment.amount_refunded || null
-            existingPayment.refundStatus = String(payment.amount_refunded)
-            existingPayment.fee = payment.fee
-            existingPayment.tax = payment.tax
-            existingPayment.errorCode = payment.error_code
-            existingPayment.errorDescription = payment.error_description
-            existingPayment.acquirerData = {
-                rrn: payment.acquirer_data?.rrn || null,
-                upiTransactionId: payment.acquirer_data?.upi_transaction_id || null,
-            };
+            let payment
+            let order
 
 
+            if (payload.event) {
 
-            await existingPayment.save();
+
+                switch (payload.event) {
+                    // case 'payment.captured':
+                    // case 'payment.authorized':
+                    case 'order.paid':
+                        razorpayOrderId = payload.razorpayOrderId || payload.payload?.payment?.entity?.order_id;
+                        razorpayPaymentId = payload.razorpayPaymentId || payload.payload?.payment?.entity?.id;
 
 
-            if (payment.status === 'captured') {
-                if (order.status !== 'paid') {
-                    throw new HttpException(400, 'Payment captured but order not marked as paid');
+                        payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
+                        order = await razorpayInstance.orders.fetch(razorpayOrderId)
+
+
+                        if (order.status !== 'paid') {
+                            throw new HttpException(400, 'Payment captured but order not marked as paid');
+
+                        }
+                        const result = await this.handleSuccessfulPayment(
+                            razorpayOrderId,
+                            razorpayPaymentId
+                        );
+
+                        return res.status(result.status).json(result);
+
+                    case 'payment.failed':
+                        razorpayOrderId = payload.razorpayOrderId || payload.payload?.payment?.entity?.order_id;
+                        razorpayPaymentId = payload.razorpayPaymentId || payload.payload?.payment?.entity?.id;
+
+
+                        payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
+                        order = await razorpayInstance.orders.fetch(razorpayOrderId)
+
+
+                        await PaymentModel.findOneAndUpdate(
+                            { orderId: razorpayOrderId },
+                            { status: 'failed' }
+                        );
+                        await OrderModel.findByIdAndUpdate(
+                            { orderId: razorpayOrderId },
+                            { orderStatus: 'cancelled', paymentStatus: 'unpaid', payoutStatus: 'failed' },
+                            { new: true }
+                        )
+                        return res.status(400).json({ message: 'Payment failed' });
+
+
+                    case 'subscription.cancelled':
+                        console.log('Case->subscription.cancelled')
+                        await this.handleSubscriptionCancellation(payload);
+                        return res.status(200).json({ message: "Subscription cancellation processed" });
+
+                    case 'refund.created':
+                    case 'refund.processed':
+                        console.log(`Case->${payload.event}`);
+                        await this.handleRefundEvent(payload);
+                        return res.status(200).json({ message: "Refund processed" });
+
+                    default:
+                        console.log(`this is default event ${payload.event}`)
+                        return res.status(202).json({ message: "Unhandled event" });
+
 
                 }
-                const result = await this.handleSuccessfulPayment(
-                    razorpayOrderId,
-                    razorpayPaymentId
-                );
-
+            } else {
+                const { razorpayOrderId, razorpayPaymentId } = payload
+                const result = await this.handleSuccessfulPayment(razorpayOrderId, razorpayPaymentId)
                 return res.status(result.status).json(result);
+
             }
 
-            if (payment.status === 'failed') {
-                await PaymentModel.findOneAndUpdate(
-                    { orderId: razorpayOrderId },
-                    { status: 'failed' }
-                );
-                return res.status(400).json({ message: 'Payment failed' });
-            }
 
-            return res.status(202).json({
-                message: `Payment processing - current status: ${payment.status}`,
-                status: payment.status
-            });
 
         } catch (error) {
             console.error('Payment verification error:', error);
             return res.status(500).json({ message: 'Payment processing failed' });
         }
     }
+
 
     public handleSuccessfulPayment = async (
         orderId: string,
@@ -167,6 +248,7 @@ export class PaymentController {
         const existingPayment = await PaymentModel.findOne({ orderId });
         if (existingPayment?.status === 'paid') {
 
+
             return {
                 status: 200,
                 message: 'Order payment completed',
@@ -176,6 +258,32 @@ export class PaymentController {
         if (!paymentRecord?.modelName) {
             throw new HttpException(400, "Model name not found");
         }
+        const paymentDetails = await razorpayInstance.payments.fetch(paymentId)
+        const entity = paymentDetails
+
+        await PaymentModel.findOneAndUpdate(
+            { orderId: orderId },
+            {
+
+                email: entity.email,
+                contact: entity.contact,
+                vpa: entity.vpa,
+                wallet: entity.wallet,
+                bank: entity.bank,
+                fee: entity.fee,
+                tax: entity.tax,
+                errorCode: entity.error_code,
+                errorDescription: entity.error_description,
+                acquirerData: {
+                    rrn: entity.acquirer_data?.rrn,
+                    upiTransactionId: entity.acquirer_data?.upi_transaction_id
+                },
+                amountRefunded: entity.amount_refunded,
+                refundStatus: entity.refund_status || 'none'
+            },
+            { new: true }
+        );
+
 
         const modelNameFromPayload = paymentRecord.modelName;
 
@@ -191,7 +299,8 @@ export class PaymentController {
                     {
                         paymentId: paymentId,
                         paymentStatus: 'paid',
-                        orderStatus: 'confirmed'
+                        orderStatus: 'confirmed',
+                        payoutStatus: 'pending'
                     },
                     { new: true }
                 ).populate<{ storeId: StoreDocument }>('storeId');
@@ -242,7 +351,7 @@ export class PaymentController {
                     updatedOrder._id,
                     {
                         commissionAmount,
-                        amountToSeller, payoutStatus: 'processed'
+                        amountToSeller, payoutStatus: 'pending'
                     },
                     { new: true }
                 );
@@ -292,9 +401,10 @@ export class PaymentController {
                         }
                     );
                     await OrderModel.findByIdAndUpdate(
-                        updatedOrder._id,
-                        { payoutStatus: 'failed' },
-                    );
+                        { orderId: updatedOrder._id },
+                        { orderStatus: 'cancelled', paymentStatus: 'unpaid', payoutStatus: 'failed' },
+                        { new: true }
+                    )
                 }
 
                 console.error('Payment processing error:', error);
@@ -308,7 +418,8 @@ export class PaymentController {
                 console.log("Finaly")
             }
 
-        } else if (modelNameFromPayload === 'UserSubScription') {
+        }
+        else if (modelNameFromPayload === 'UserSubScription') {
             const updatedSubscription = await UserSubscriptionModel.findOneAndUpdate(
                 { orderId: orderId },
                 {
@@ -317,6 +428,7 @@ export class PaymentController {
                     startDate: new Date(),
                     endDate: this.calculateEndDate(),
                     paymentId: paymentId
+
                 },
                 { new: true }
             );
@@ -324,6 +436,7 @@ export class PaymentController {
             if (!updatedSubscription) {
                 throw new HttpException(404, 'Subscription not found');
             }
+
 
             return {
                 status: 200,
@@ -336,47 +449,76 @@ export class PaymentController {
     }
 
     private calculateEndDate(): Date {
-        const date = new Date();
-        date.setMonth(date.getMonth() + 1);
+        const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+
         return date;
     }
 
 
 
-    public async handlePayoutWebhook(req: Request, res: Response) {
-        const signature = req.headers['x-razorpay-signature'] as string;
-        const payload = req.body;
 
-        try {
-            // Verify signature
-            const generatedSignature = crypto
-                .createHmac('sha256', process.env.RAZORPAYX_WEBHOOK_SECRET)
-                .update(JSON.stringify(payload))
-                .digest('hex');
+    private async handleSubscriptionCancellation(payload: any): Promise<void> {
+        console.log('======handleSubscriptionCancellation function Call=====')
+        const subscriptionId = payload.payload.subscription.entity.id;
+        const subscription = await UserSubscriptionModel.findOne({
+            razorpaySubscriptionId: subscriptionId
+        });
 
-            if (generatedSignature !== signature) {
-                return res.status(401).send('Invalid signature');
-            }
 
-            const payoutId = payload.payload.payout.entity.id;
-            const status = payload.payload.payout.entity.status;
+        console.log(`This is subscriptionId:${subscriptionId} and this is subscription:${subscription}`)
 
-            // Update order status based on payout status
-            await OrderModel.findOneAndUpdate(
-                { payoutId },
-                {
-                    payoutStatus: status === 'processed' ? 'processed' : 'failed',
-                    payoutDetails: payload.payload.payout.entity
-                }
-            );
 
-            res.status(200).send('Webhook processed');
-        } catch (error) {
-            console.error('Payout webhook error:', error);
-            res.status(500).send('Webhook processing failed');
+        if (!subscription) {
+            console.warn("Subscription not found:", subscriptionId);
+            return;
         }
+
+        // Update subscription status
+        subscription.isActive = false;
+        subscription.endDate = new Date(payload.payload.subscription.entity.end_at * 1000);
+        subscription.cancelledAt = new Date()
+        subscription.isAutoRenew = null
+        subscription.expiry = null
+        await subscription.save();
     }
 
+
+    private async handleRefundEvent(payload: any): Promise<void> {
+        console.log('====handleRefundEvent function call=====')
+        const paymentId = payload.payload.payment.entity.id;
+        const refund = payload.payload.refund.entity;
+        console.log(`This is paymentId: ${paymentId} and this is refund ${JSON.stringify(refund)}`);
+
+        const payment = await PaymentModel.findOne({ paymentId });
+
+        console.log(`This is payment for Refund: ${payment}`)
+
+
+        if (payment) {
+            payment.amountRefunded = refund.amount / 100;
+            payment.refundStatus = refund.status === 'processed' ? 'refunded' : 'failed';
+            payment.refundId = refund.id
+            await payment.save();
+            console.log("payment After Save status and refundamout :", payment)
+        }
+
+        const subscription = await UserSubscriptionModel.findOne({ paymentId });
+        console.log(`This is subscription for refund:${subscription}`)
+        if (subscription) {
+            subscription.refundStatus = payment?.refundStatus;
+            subscription.refundAmount = payment?.amountRefunded;
+            subscription.refundId = refund.id;
+            await subscription.save();
+        }
+
+        const order = await OrderModel.findOne({ paymentId });
+        console.log(`This is order for Refund :${order}`)
+        if (order) {
+            order.paymentStatus = payment?.refundStatus === 'refunded' ? 'refunded' : order.paymentStatus;
+            await order.save();
+        }
+    }
 
 
     public async createPayment(req: Request, res: Response, next: NextFunction): Promise<Response> {
@@ -400,3 +542,40 @@ export class PaymentController {
 
     }
 }
+
+
+
+
+// if (payload.event === 'refund.created' || payload.event === 'refund.processed' || payload.event === 'subscription.cancelled') {
+//     const refund = payload.payload?.refund?.entity;
+
+//     const existingPayment = await PaymentModel.findOne({ orderId: razorpayOrderId });
+//     existingPayment.amountRefunded = refund.amount / 100;
+//     existingPayment.refundStatus = refund.status;
+//     existingPayment.refundId = refund.id;
+//     existingPayment.updatedAt = new Date();
+
+//     await existingPayment.save();
+
+//     const userSubscription = await UserSubscriptionModel.findOne({ paymentId: razorpayPaymentId });
+//     if (userSubscription) {
+//         userSubscription.refundStatus = refund.status;
+//         userSubscription.refundAmount = refund.amount / 100;
+//         userSubscription.updatedAt = new Date();
+
+//         if (refund.status === 'cancelled') {
+//             userSubscription.isActive = false;
+//             userSubscription.endDate = new Date();
+//             userSubscription.expiry = null
+//             userSubscription.isAutoRenew = null
+//             userSubscription.cancelledAt = new Date()
+//         }
+
+//         await userSubscription.save();
+//     }
+
+//     return res.status(200).json({
+//         message: 'Refund processed successfully',
+//         status: refund.status
+//     });
+// }

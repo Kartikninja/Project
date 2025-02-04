@@ -22,6 +22,11 @@ export class PaymentRouter implements Routes {
         this.router.post(`${this.path}/verify/payment`, this.payment.verifyPayment)
 
         this.router.get(`${this.path}/admin/getAll`, isAdmin, this.payment.getAllPaymnet)
-     
+
+        // this.router.post(`${this.path}/refund/webhook`, this.payment.handleRefundProcessedWebhook)
+
+        // this.router.post(`${this.path}/subscriptioncancle/webhook`, this.payment.handleSubscriptionCancellationWebhook)
+
     }
+
 }

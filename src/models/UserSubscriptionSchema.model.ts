@@ -60,7 +60,32 @@ const UserSubscriptionSchema: Schema = new Schema({
         required: false
     },
     orderId: { type: String, required: false, default: null },
-    razorpaySubscriptionId: { type: String, required: false, default: null }
+    razorpaySubscriptionId: { type: String, required: false, default: null },
+
+
+    cancelledAt: {
+        type: Date,
+        default: null
+    },
+    refundStatus: {
+        type: String,
+        enum: ['none', 'pending', 'refunded', 'failed', 'partial', 'processed'],
+        default: 'none'
+    },
+    refundAmount: {
+        type: Number,
+        default: 0
+    },
+    refundId: {
+        type: String,
+        default: null
+    },
+    cancellationReason: {
+        type: String,
+        default: null
+    }
+
+
 }, { timestamps: true });
 
 export const UserSubscriptionModel = model<UserSubscription & Document>('UserSubscription', UserSubscriptionSchema, 'UserSubscriptions');

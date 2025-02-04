@@ -1,9 +1,9 @@
-import {  Document } from 'mongoose'
+import { Document } from 'mongoose'
 export interface Payment {
     userId: string;
     orderId: string;
     amount: number;
-    status: 'paid' | 'unpaid';
+    status: 'paid' | 'unpaid' | 'refunded';
     paymentMethod: string;
     createdAt: Date;
     updatedAt: Date;
@@ -16,7 +16,8 @@ export interface Payment {
     wallet?: string | null;
     bank?: string | null;
     amountRefunded?: number;
-    refundStatus?: string | null;
+    // refundStatus?: string | null;
+    refundStatus: 'pending' | 'processed' | 'failed' | 'partial' | 'refunded'
     fee?: number;
     tax?: number;
     errorCode?: string | null;
@@ -25,6 +26,9 @@ export interface Payment {
         rrn?: string | null;
         upiTransactionId?: string | null;
     };
+
+    refundId: string
+
 
 }
 

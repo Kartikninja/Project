@@ -14,6 +14,17 @@ export interface UserSubscription extends Document {
     paymentStatus: 'paid' | 'unpaid'
     price: number
     razorpaySubscriptionId: string
+    duration: number
+
+    paymentId: string
+
+    cancelledAt: Date
+
+    refundStatus: 'none' | 'pending' | 'refunded' | 'failed' | 'partial' | 'processed'
+    // refundStatus: 'none' | 'requested' | 'processing' | 'refunded' | 'failed' | 'processed'
+    refundAmount: number
+    refundId: string
+    cancellationReason: string
 }
 
 

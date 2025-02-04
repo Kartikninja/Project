@@ -15,7 +15,7 @@ export interface Order {
     products: OrderProduct[];
     totalPrice: number;
     orderStatus: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
-    paymentStatus: 'paid' | 'unpaid';
+    paymentStatus: 'paid' | 'unpaid' | 'refunded';
     shippingAddress: string;
     createdAt: Date;
     updatedAt: Date;
@@ -25,5 +25,6 @@ export interface Order {
     shippingCost: number;
     commissionAmount: number
     amountToSeller: number
-    payoutStatus: 'pending' | 'processed' | 'failed'
+    payoutStatus: 'pending' | 'processed' | 'processing' | 'rejected' | 'reversed' | "queued" | "failed"
+
 }
