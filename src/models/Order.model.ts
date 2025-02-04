@@ -74,7 +74,9 @@ const OrderSchema: Schema = new Schema<Order>(
 
         payoutStatus: { type: String, enum: ['pending', 'processed', 'processing', 'rejected', 'reversed', "queued", "failed"], default: 'pending' },
         taxAmount: { type: Number, default: 0 },
-        shippingCost: { type: Number, default: 0 }
+        shippingCost: { type: Number, default: 0 },
+        refundId: { type: String, required: false },
+        refundStatus: { type: String, enum: ['refunded', 'partial'] }
 
     },
     {

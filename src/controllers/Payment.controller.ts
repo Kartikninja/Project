@@ -19,6 +19,7 @@ import { PayoutModel } from '@/models/Payout.model';
 import { StoreDocument } from '@/interfaces/Store.interface';
 import { RAZORPAY_API_SECRET, WEBHOOK_SECRET, RAZORPAY_API_KEY, RAZORPAYX_API_KEY, RAZORPAYX_API_SECRET, RAZORPAYX_WEBHOOK_SECRET, REDIS_HOST, REDIS_PORT } from '@config'
 import { Queue } from 'bullmq';
+import { PayoutService } from '@/services/payout.service';
 
 
 
@@ -35,7 +36,7 @@ export class PaymentController {
     }
     private paymentService = Container.get(PaymentService);
     private userSubscriptionService = Container.get(UserSubscriptionService)
-
+    private payout = Container.get(PayoutService)
 
 
     public async createRazorpayPayment(req: Request, res: Response): Promise<Response> {
@@ -162,8 +163,6 @@ export class PaymentController {
 
 
                 switch (payload.event) {
-                    // case 'payment.captured':
-                    // case 'payment.authorized':
                     case 'order.paid':
                         razorpayOrderId = payload.razorpayOrderId || payload.payload?.payment?.entity?.order_id;
                         razorpayPaymentId = payload.razorpayPaymentId || payload.payload?.payment?.entity?.id;
@@ -210,7 +209,6 @@ export class PaymentController {
                         await this.handleSubscriptionCancellation(payload);
                         return res.status(200).json({ message: "Subscription cancellation processed" });
 
-                    case 'refund.created':
                     case 'refund.processed':
                         console.log(`Case->${payload.event}`);
                         await this.handleRefundEvent(payload);
@@ -321,9 +319,10 @@ export class PaymentController {
                     commission: commissionAmount,
                     razorpayFundAccountId: (updatedOrder.storeId as unknown as StoreDocument).razorpayFundAccountId,
                     storeId: (updatedOrder.storeId as unknown as StoreDocument)._id,
-                    orderId: updatedOrder._id,
+                    orderId: updatedOrder.orderId,
                     status: 'pending',
-                    purpose: 'payout'
+                    purpose: 'payout',
+                    DatabaseOrderId: updatedOrder._id
                 });
                 const productStockUpdates = updatedOrder.products.map(product => ({
 
@@ -474,7 +473,6 @@ export class PaymentController {
             return;
         }
 
-        // Update subscription status
         subscription.isActive = false;
         subscription.endDate = new Date(payload.payload.subscription.entity.end_at * 1000);
         subscription.cancelledAt = new Date()
@@ -483,40 +481,112 @@ export class PaymentController {
         await subscription.save();
     }
 
+    // await OrderModel.findOneAndUpdate(
+    //     { paymentId },
+    //     {
+    //         paymentStatus: refund.status === 'processed' ? 'refunded' : 'failed',
+    //         orderStatus: 'cancelled',
+    //         payoutStatus: 'refunded',
+    //         refundId: refund.id
+    //     }
+    // );
+
 
     private async handleRefundEvent(payload: any): Promise<void> {
-        console.log('====handleRefundEvent function call=====')
+        console.log('====handleRefundEvent function call=====');
         const paymentId = payload.payload.payment.entity.id;
         const refund = payload.payload.refund.entity;
-        console.log(`This is paymentId: ${paymentId} and this is refund ${JSON.stringify(refund)}`);
 
         const payment = await PaymentModel.findOne({ paymentId });
 
-        console.log(`This is payment for Refund: ${payment}`)
-
-
         if (payment) {
-            payment.amountRefunded = refund.amount / 100;
-            payment.refundStatus = refund.status === 'processed' ? 'refunded' : 'failed';
-            payment.refundId = refund.id
-            await payment.save();
-            console.log("payment After Save status and refundamout :", payment)
-        }
+            await PaymentModel.findByIdAndUpdate(payment._id, {
+                amountRefunded: refund.amount / 100,
+                refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
+                refundId: refund.id
+            });
 
-        const subscription = await UserSubscriptionModel.findOne({ paymentId });
-        console.log(`This is subscription for refund:${subscription}`)
-        if (subscription) {
-            subscription.refundStatus = payment?.refundStatus;
-            subscription.refundAmount = payment?.amountRefunded;
-            subscription.refundId = refund.id;
-            await subscription.save();
-        }
+            if (payment.modelName === 'Order') {
 
-        const order = await OrderModel.findOne({ paymentId });
-        console.log(`This is order for Refund :${order}`)
-        if (order) {
-            order.paymentStatus = payment?.refundStatus === 'refunded' ? 'refunded' : order.paymentStatus;
-            await order.save();
+
+                const order = await OrderModel.findOne({ paymentId })
+                    .populate('products.productId')
+                    .populate('products.productVariantId');
+                console.log("handleRefundEvent function Order", order)
+                const stockUpdates = order.products.flatMap(product => [
+                    {
+                        updateOne: {
+                            filter: { _id: product.productId },
+                            update: { $inc: { stockLeft: product.quantity } }
+                        }
+                    },
+                    ...(product.productVariantId ? [{
+                        updateOne: {
+                            filter: { _id: product.productVariantId },
+                            update: { $inc: { stockLeft: product.quantity } }
+                        }
+                    }] : [])
+                ]);
+
+
+                await Promise.all([
+                    Product.bulkWrite(stockUpdates),
+                    ProductVariant.bulkWrite(stockUpdates)
+                ]);
+
+
+                const updateOrderStatus = await OrderModel.findByIdAndUpdate(
+                    order._id,
+                    {
+                        refundStatus: 'partial',
+                        refundId: refund.id,
+                        orderStatus: 'cancelled',
+                        payoutStatus: 'pending'
+                    }
+                )
+
+
+
+                const payoutQueue = new Queue('refund', {
+                    connection: {
+                        host: REDIS_HOST,
+                        port: Number(REDIS_PORT),
+                    },
+                });
+
+                await payoutQueue.add(
+                    'processPayoutRefund',
+                    {
+                        refundId: refund.id,
+                        paymentId: payment.paymentId,
+                        refundAmount: order.totalPrice,
+                        userId: order.userId,
+                        orderId: order.orderId
+                    },
+                    {
+                        attempts: 3,
+                        backoff: {
+                            type: 'exponential',
+                            delay: 5000,
+                        },
+                    }
+                )
+
+
+            }
+            else if (payment.modelName === 'UserSubscription') {
+                // Subscription refund logic
+                await UserSubscriptionModel.findOneAndUpdate(
+                    { paymentId },
+                    {
+                        refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
+                        refundAmount: refund.amount / 100,
+                        // refundId: refund.id,
+                        isActive: false,
+                        endDate: new Date()
+                    }
+                );
+            }
         }
     }
 

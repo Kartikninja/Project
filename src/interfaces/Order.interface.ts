@@ -26,5 +26,8 @@ export interface Order {
     commissionAmount: number
     amountToSeller: number
     payoutStatus: 'pending' | 'processed' | 'processing' | 'rejected' | 'reversed' | "queued" | "failed"
+    refundId: string
 
+
+    refundStatus: 'refunded' | 'partial'
 }

@@ -66,7 +66,8 @@ export class UserSubscriptionController {
             const subscriptionId = req.params.subscriptionId;
             const cancellationReason = typeof req.body.cancellationReason === 'string'
                 ? req.body.cancellationReason
-                : 'User requested cancellation'; const result = await this.userSub.cancleSubscription(userId, subscriptionId, cancellationReason);
+                : 'User requested cancellation';
+            const result = await this.userSub.cancleSubscription(userId, subscriptionId, cancellationReason);
 
             res.status(200).json({ message: "Refund Initiate", result })
 

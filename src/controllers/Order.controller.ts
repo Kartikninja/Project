@@ -21,6 +21,25 @@ class OrderController {
         }
     };
 
+
+
+    public cancelOrder = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params;
+            const userId = req.user._id;
+            const { cancellationReason } = req.body
+
+            const cancel = await this.orderService.cancelOrder(id, userId, cancellationReason)
+            res.status(200).json({ data: cancel, message: 'Order cancelled successfully' })
+
+        } catch (err) {
+            next(err)
+        }
+    }
+
+
+
+
     public getOrderById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { id } = req.params;

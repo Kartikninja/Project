@@ -2,14 +2,14 @@
 
 import { Schema, model, Document } from 'mongoose';
 
-interface Payout extends Document {
+export interface Payout extends Document {
     payoutAmount: number;
     currency: string;
     razorpayFundAccountId: string;
     storeId: Schema.Types.ObjectId;
     razorpayPayoutId: string;
     status: 'pending' | 'processed' | 'processing' | 'rejected' | 'reversed' | "queued" | "failed";
-    orderId: Schema.Types.ObjectId
+    orderId: string
     utr: string;
     purpose: 'payout' | 'refund' | 'other';
     error: string
@@ -18,6 +18,9 @@ interface Payout extends Document {
     processedAt: Date;
     transactionId: string
 
+    refundId?: string;
+    reversalId?: string;
+    reversalStatus?: 'pending' | 'reversed' | 'failed';
 
 
 
@@ -30,7 +33,7 @@ interface Payout extends Document {
     };
     mode: string;
     narration: string
-
+    DatabaseOrderId: Schema.Types.ObjectId
 }
 
 const PayoutSchema = new Schema<Payout>({
@@ -40,7 +43,6 @@ const PayoutSchema = new Schema<Payout>({
     commission: { type: Number, required: true },
     storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
     razorpayPayoutId: { type: String, required: false },
-    orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
     status: { type: String, enum: ['pending', 'processed', 'processing', 'queued', 'rejected', 'reversed', 'failed'], default: 'pending' },
     error: { type: String, maxlength: 500 },
     utr: { type: String, default: null, required: false },
@@ -58,7 +60,15 @@ const PayoutSchema = new Schema<Payout>({
         reason: { type: String, required: false },
     },
     mode: { type: String, required: false },
-    narration: { type: String, required: false }
+    narration: { type: String, required: false },
+
+    orderId: { type: String, },
+    DatabaseOrderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
+
+    refundId: { type: String, default: null, required: false },
+    reversalId: { type: String, default: null, required: false },
+    reversalStatus: { type: String, enum: ['pending', 'reversed', 'failed'] },
+
 }, { timestamps: true });
 
 export const PayoutModel = model<Payout>('Payout', PayoutSchema);
