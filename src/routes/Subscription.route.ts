@@ -15,7 +15,7 @@ export class SubscriptionRoute implements Routes {
     }
 
     private intializeRoutes() {
-        this.router.post(`${this.path}/add`, isAdmin, ValidationMiddleware(CreateSubscriptionDto), this.sub.add)
+        this.router.post(`${this.path}/add`, isAdmin, ValidationMiddleware(CreateSubscriptionDto), this.sub.CreateSubscription)
         this.router.get(`${this.path}/getAll`, this.sub.getAll)
         this.router.get(`${this.path}/:id`, this.sub.getById)
         this.router.delete(`${this.path}/:id`, this.sub.delete)

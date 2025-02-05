@@ -7,7 +7,7 @@ import { Product } from '@/models/Product.model';
 import { ProductVariant } from '@/models/ProductVariant.model';
 import { PaymentService } from './Paymnet.Service';
 import { DiscountModel } from '@/models/Discount.model';
-import { Discount_TYPE } from '@/utils/constant';
+import { Discount_TYPE, SUBSCRIPTIONS_TYPES } from '@/utils/constant';
 import { SubCategory } from '@/models/SubCategory.model';
 import { NotificationService } from './Notification.service';
 import { sendOrderUpdateEmail, sendPurchaseEmail, sendStatusUpdateEmail } from '@/utils/mailer';
@@ -15,6 +15,8 @@ import { CartItem, DiscountAttributes } from '@/interfaces/Discount.interface';
 import { RazorpayService } from './razorpay.service';
 import { razorpayInstance } from '@/controllers/Payment.controller';
 import { Order } from '@/interfaces/Order.interface';
+import { UserSubscriptionModel } from '@/models/UserSubscriptionSchema.model';
+import { SubscriptionModel } from '@/models/Subscription.model';
 
 
 
@@ -107,6 +109,7 @@ class OrderService {
                 totalPrice += discountedPrice
                 console.log(`totalPrice ${totalPrice} and discountedPrice ${discountedPrice}`)
 
+                totalPrice = await this.discountForSubscription(totalPrice, userId)
 
                 createOrder.push({
                     productId,
@@ -232,6 +235,47 @@ class OrderService {
     }
 
 
+    public async discountForSubscription(totalPrice: number, userId: string) {
+        const userSubscription = await UserSubscriptionModel.findOne({ userId: userId, isActive: true, expiry: { $gte: new Date() }, paymentStatus: 'paid' })
+        if (!userSubscription) {
+            console.log("subscription Not found for this user")
+            return totalPrice
+        }
+        console.log("userSubscription", userSubscription)
+        const subscription = await SubscriptionModel.findOne({ _id: userSubscription.subscriptionId })
+        if (!subscription) {
+            return totalPrice
+        }
+        let discountAmount = 0
+
+        switch (userSubscription.subscriptionType) {
+            case SUBSCRIPTIONS_TYPES.BASIC:
+                discountAmount = totalPrice * 0.05;
+                console.log(`Discount Amount is ${discountAmount} for BASIC`)
+                break;
+            case SUBSCRIPTIONS_TYPES.PREMIUM:
+                discountAmount = totalPrice * 0.10;
+                console.log(`Discount Amount is ${discountAmount} for PREMIUM`)
+
+                break;
+            case SUBSCRIPTIONS_TYPES.ULTIMATE:
+                discountAmount = totalPrice * 0.15;
+                console.log(`Discount Amount is ${discountAmount} for ULTIMATE`)
+
+                break;
+            default:
+                console.log("No subscription discount  for This user")
+                discountAmount = 0;
+        }
+
+        const finalPrice = Math.max(totalPrice - discountAmount, 0);
+        console.log(`User has an active subscription. Discount applied: ${discountAmount}. Final Price: ${finalPrice}`);
+
+        return finalPrice;
+
+    }
+
+
 
     public async cancelOrder(id: string, userId: string, cancellationReason?: string): Promise<any> {
 
@@ -259,7 +303,7 @@ class OrderService {
             let refund;
             try {
                 refund = await razorpayInstance.payments.refund(order.paymentId, {
-                    amount: Math.round(order.totalPrice * 100), 
+                    amount: Math.round(order.totalPrice * 100),
                     speed: 'normal',
                     notes: refundNotes
                 });

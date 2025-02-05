@@ -15,10 +15,10 @@ export class SubscriptionController {
     }
 
 
-    public add = async (req: Request, res: Response, next: NextFunction) => {
+    public CreateSubscription = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const subData = req.body
-            const result = await this.sub.add(subData)
+            const result = await this.sub.CreateSubscription(subData)
             res.json({ message: "Added succesfuly", status: true, result })
         } catch (error) {
             next(error)
