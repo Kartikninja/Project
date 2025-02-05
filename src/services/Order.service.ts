@@ -234,39 +234,54 @@ class OrderService {
 
 
     public async cancelOrder(id: string, userId: string, cancellationReason?: string): Promise<any> {
-        console.log(`id:${id} and userId:${userId}`)
+
         try {
-            const order = await OrderModel.findOne({ _id: id, userId: userId })
-            if (!order) throw new HttpException(404, 'Order not found')
+            const order = await OrderModel.findOne({ _id: id, userId: userId });
+            if (!order) throw new HttpException(404, 'Order not found');
+
             if (order.orderStatus === 'cancelled') {
-                throw new HttpException(400, 'Order already cancelled')
+                throw new HttpException(400, 'Order already cancelled');
             }
+
             if (order.paymentStatus !== 'paid') {
-                throw new HttpException(400, 'Order not paid')
+                throw new HttpException(400, 'Order not paid');
+            }
+
+            if (!order.paymentId) {
+                throw new HttpException(400, 'Payment ID missing for refund processing');
             }
 
             const refundNotes = {
                 cancelledBy: userId.toString(),
-                reason: cancellationReason || 'Order Cancelled by user'
+                reason: cancellationReason || 'Order cancelled by user'
             };
 
-            const refund = await razorpayInstance.payments.refund(order.paymentId, {
-                amount: order.totalPrice * 100,
-                speed: 'normal',
-                notes: refundNotes
+            let refund;
+            try {
+                refund = await razorpayInstance.payments.refund(order.paymentId, {
+                    amount: Math.round(order.totalPrice * 100), 
+                    speed: 'normal',
+                    notes: refundNotes
+                });
+            } catch (refundError) {
+                console.error("Refund Failed:", refundError);
+                throw new HttpException(500, 'Refund processing failed');
+            }
 
-            })
-            console.log("Order Cancelled Refund", refund)
+            console.log("Order Cancelled Refund", refund);
+
             return {
                 success: true,
                 amount: order.totalPrice,
-                message: "Your Order is Cancle "
-            }
+                message: "Your order has been cancelled and refunded."
+            };
+
         } catch (error) {
             console.error('Error cancelling order:', error);
             throw new HttpException(500, 'Failed to cancel order');
         }
     }
+
 
 
 
