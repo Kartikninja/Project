@@ -14,16 +14,33 @@ const razorpayX = new Razorpay({
 
 })
 
+
 export function initializePayoutWorker() {
-    console.log("Worker")
+    console.log("Worker initialized");
+
     const worker = new Worker('payouts', async job => {
         const { payoutId, amount, fundAccountId, storeData } = job.data;
         const payoutService = Container.get(PayoutService);
 
         try {
+            const payoutRecord = await PayoutModel.findById(payoutId);
+            if (!payoutRecord) throw new Error("Payout record not found");
+
+            const order = await OrderModel.findOne({ _id: payoutRecord.DatabaseOrderId, storeId: storeData._id });
+
+            if (!order || order.orderStatus === 'cancelled' || order.refundStatus === 'refunded' || order.paymentStatus === 'unpaid') {
+                await PayoutModel.findByIdAndUpdate(payoutId, {
+                    status: 'failed',
+                    error: "Order was cancelled before payout",
+                    refundId: order.refundId || null,
+
+                });
+                return;
+            }
+
             await PayoutModel.findByIdAndUpdate(payoutId, {
                 status: 'processing',
-                processingStartedAt: new Date()
+                processingStartedAt: new Date(),
             });
 
             const payoutResponse = await payoutService.amoutToSeller(
@@ -32,8 +49,6 @@ export function initializePayoutWorker() {
                 storeData
             );
 
-
-
             await PayoutModel.findByIdAndUpdate(payoutId, {
                 status: 'processed',
                 razorpayPayoutId: payoutResponse.id,
@@ -41,10 +56,10 @@ export function initializePayoutWorker() {
                 processedAt: new Date(),
                 error: null,
             });
-
-
-
+            order.payoutStatus = 'processed'
+            await order.save()
         } catch (error) {
+            console.error(`Payout processing failed:`, error);
             await PayoutModel.findByIdAndUpdate(payoutId, {
                 status: 'failed',
                 error: error.message.substring(0, 500),
@@ -78,70 +93,4 @@ export function initializePayoutWorker() {
     });
 
     return worker;
-}
-
-
-
-
-export function initializeRefundWorker() {
-    console.log("Refund Worker Initialized");
-    const worker = new Worker('refund', async job => {
-        const { refundId, paymentId, refundAmount, userId, orderId } = job.data
-        const refundService = Container.get(PayoutService)
-        try {
-
-            const refundResult = await refundService.payoutReversal(job.data)
-            console.log("initializeRefundWorker refundResult", refundResult)
-            if (refundResult?.success) {
-                const payment = await PaymentModel.findOne({ paymentId });
-
-                if (payment) {
-                    payment.amountRefunded += refundAmount;
-                    payment.refundStatus = refundAmount === payment.amount ? 'refunded' : 'partial';
-                    payment.refundId = refundId;
-                    await payment.save();
-                    console.log('Payment updated with refund details.');
-                } else {
-                    console.log('Payment not found for refund update.');
-                }
-
-                const order = await OrderModel.findOne({ orderId });
-
-                if (order) {
-                    order.refundStatus = refundAmount === order.totalPrice ? 'refunded' : 'partial';
-                    order.refundId = refundId;
-                    await order.save();
-                    console.log('Order updated with refund details.');
-                } else {
-                    console.log('Order not found for refund update.');
-                }
-            } else {
-                console.error('Refund processing failed:', refundResult.error);
-            }
-        }
-        catch (err) {
-            console.error(err)
-        }
-    }, {
-        connection: {
-            host: REDIS_HOST,
-            port: Number(REDIS_PORT),
-        },
-        limiter: {
-            max: 10,
-            duration: 1000
-        }
-    });
-
-    worker.on('completed', job => {
-        console.log(`Payout processed for job ${job.id}`);
-    });
-
-    worker.on('failed', (job, err) => {
-        console.error(`Payout failed for job ${job?.id}:`, err);
-    });
-
-    return worker;
-
-
 }

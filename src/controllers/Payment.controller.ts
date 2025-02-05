@@ -362,23 +362,29 @@ export class PaymentController {
                         port: Number(REDIS_PORT),
                     },
                 });
+                if (updatedOrder.paymentStatus === 'paid' && updatedOrder.orderStatus !== 'cancelled') {
 
-                await payoutQueue.add(
-                    'processPayout',
-                    {
-                        payoutId: Payout._id.toString(),
-                        amount: amountToSeller,
-                        fundAccountId: updatedOrder.storeId.razorpayFundAccountId,
-                        storeData: updatedOrder.storeId
-                    },
-                    {
-                        attempts: 3,
-                        backoff: {
-                            type: 'exponential',
-                            delay: 5000,
+                    await payoutQueue.add(
+                        'processPayout',
+                        {
+                            payoutId: Payout._id.toString(),
+                            amount: amountToSeller,
+                            fundAccountId: updatedOrder.storeId.razorpayFundAccountId,
+                            storeData: updatedOrder.storeId
                         },
-                    }
-                )
+                        {
+                            delay: 3 * 60 * 1000,
+                            attempts: 3,
+                            backoff: {
+                                type: 'exponential',
+                                delay: 5000,
+                            },
+                        }
+                    )
+
+                } else {
+                    console.log("Payout not added to queue: Payment not confirmed or order canceled");
+                }
 
 
 
@@ -496,98 +502,81 @@ export class PaymentController {
         console.log('====handleRefundEvent function call=====');
         const paymentId = payload.payload.payment.entity.id;
         const refund = payload.payload.refund.entity;
-
+        if (!paymentId || !refund) {
+            console.error('Invalid refund event payload:', payload);
+            return;
+        }
         const payment = await PaymentModel.findOne({ paymentId });
+        if (!payment) {
+            console.error('Payment not found:', paymentId);
+            return;
+        }
+        // if (payment) {
+        await PaymentModel.findByIdAndUpdate(payment._id, {
+            amountRefunded: refund.amount / 100,
+            refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
+            refundId: refund.id
+        });
 
-        if (payment) {
-            await PaymentModel.findByIdAndUpdate(payment._id, {
-                amountRefunded: refund.amount / 100,
-                refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
-                refundId: refund.id
-            });
-
-            if (payment.modelName === 'Order') {
-
-
-                const order = await OrderModel.findOne({ paymentId })
-                    .populate('products.productId')
-                    .populate('products.productVariantId');
-                console.log("handleRefundEvent function Order", order)
-                const stockUpdates = order.products.flatMap(product => [
-                    {
-                        updateOne: {
-                            filter: { _id: product.productId },
-                            update: { $inc: { stockLeft: product.quantity } }
-                        }
-                    },
-                    ...(product.productVariantId ? [{
-                        updateOne: {
-                            filter: { _id: product.productVariantId },
-                            update: { $inc: { stockLeft: product.quantity } }
-                        }
-                    }] : [])
-                ]);
+        if (payment.modelName === 'Order') {
 
 
+            const order = await OrderModel.findOne({ paymentId })
+                .populate('products.productId')
+                .populate('products.productVariantId');
+            console.log("handleRefundEvent function Order", order)
+            const stockUpdates = order.products.flatMap(product => [
+                {
+                    updateOne: {
+                        filter: { _id: product.productId },
+                        update: { $inc: { stockLeft: product.quantity } }
+                    }
+                },
+                ...(product.productVariantId ? [{
+                    updateOne: {
+                        filter: { _id: product.productVariantId },
+                        update: { $inc: { stockLeft: product.quantity } }
+                    }
+                }] : [])
+            ]);
+
+
+            if (refund.status === 'processed' && stockUpdates.length > 0) {
                 await Promise.all([
                     Product.bulkWrite(stockUpdates),
                     ProductVariant.bulkWrite(stockUpdates)
                 ]);
-
-
-                const updateOrderStatus = await OrderModel.findByIdAndUpdate(
-                    order._id,
-                    {
-                        refundStatus: 'partial',
-                        refundId: refund.id,
-                        orderStatus: 'cancelled',
-                        payoutStatus: 'pending'
-                    }
-                )
-
-
-
-                const payoutQueue = new Queue('refund', {
-                    connection: {
-                        host: REDIS_HOST,
-                        port: Number(REDIS_PORT),
-                    },
-                });
-
-                await payoutQueue.add(
-                    'processPayoutRefund',
-                    {
-                        refundId: refund.id,
-                        paymentId: payment.paymentId,
-                        refundAmount: order.totalPrice,
-                        userId: order.userId,
-                        orderId: order.orderId
-                    },
-                    {
-                        attempts: 3,
-                        backoff: {
-                            type: 'exponential',
-                            delay: 5000,
-                        },
-                    }
-                )
-
-
             }
-            else if (payment.modelName === 'UserSubscription') {
-                // Subscription refund logic
-                await UserSubscriptionModel.findOneAndUpdate(
-                    { paymentId },
-                    {
-                        refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
-                        refundAmount: refund.amount / 100,
-                        // refundId: refund.id,
-                        isActive: false,
-                        endDate: new Date()
-                    }
-                );
-            }
+
+
+
+            await OrderModel.findByIdAndUpdate(
+                order._id,
+                {
+                    refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
+                    refundId: refund.id,
+                    orderStatus: 'cancelled',
+                    payoutStatus: 'pending'
+                }
+            )
+
+
+
+
+
         }
+        else if (payment.modelName === 'UserSubscription') {
+            await UserSubscriptionModel.findOneAndUpdate(
+                { paymentId },
+                {
+                    refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
+                    refundAmount: refund.amount / 100,
+                    isActive: false,
+                    endDate: new Date()
+                }
+            );
+        }
+        
     }
 
 
