@@ -30,12 +30,16 @@ const SubCategorySchema: Schema = new Schema(
         storeId: {
             type: Schema.Types.ObjectId,
             ref: 'Store'
-        }
+        },
+        refundPolicy: { type: String, enum: ['no-refund', '7-days', '30-days', 'custom'], default: 'no-refund', required: false },
+        replacementPolicy: { type: String, enum: ['no-replacement', '7-days', '30-days', 'custom'], default: 'no-replacement', required: false },
+        customPolicyDetails: { type: String, required: false }
     },
     {
         timestamps: true,
     }
 );
+
 
 export const SubCategory = model<SubCategoryInterface & Document>('SubCategory', SubCategorySchema);
 

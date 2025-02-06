@@ -356,6 +356,7 @@ export class PaymentController {
                 );
 
 
+
                 const payoutQueue = new Queue('payouts', {
                     connection: {
                         host: REDIS_HOST,
@@ -373,7 +374,7 @@ export class PaymentController {
                             storeData: updatedOrder.storeId
                         },
                         {
-                            delay: 3 * 60 * 1000,
+                            delay: 4 * 60 * 1000,
                             attempts: 3,
                             backoff: {
                                 type: 'exponential',
@@ -382,9 +383,43 @@ export class PaymentController {
                         }
                     )
 
+
+
+
                 } else {
                     console.log("Payout not added to queue: Payment not confirmed or order canceled");
                 }
+
+                if (updatedOrder.paymentStatus === 'paid') {
+                    const shippingQueue = new Queue('shipping', {
+                        connection: {
+                            host: REDIS_HOST,
+                            port: Number(REDIS_PORT),
+                        },
+                    });
+
+                    for (const product of updatedOrder.products) {
+                        const trackingNumber = this.generateTrackingNumber();
+                        console.log("trackingNumber", trackingNumber)
+
+                        await shippingQueue.add('processShipping', {
+                            productId: product.productId,
+                            trackingNumber: trackingNumber,
+                            quantity: product.quantity,
+                            shippingAddress: updatedOrder.shippingAddress,
+                            storeId: updatedOrder.storeId,
+                            orderId: updatedOrder._id,
+                        }, {
+                            delay: 1 * 60 * 1000,
+                            attempts: 3,
+                            backoff: {
+                                type: 'exponential',
+                                delay: 5000,
+                            },
+                        })
+                    }
+                }
+
 
 
 
@@ -462,6 +497,11 @@ export class PaymentController {
 
 
 
+    public generateTrackingNumber(): string {
+        return 'TRK-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    }
+
+
 
     private async handleSubscriptionCancellation(payload: any): Promise<void> {
         console.log('======handleSubscriptionCancellation function Call=====')
@@ -511,7 +551,7 @@ export class PaymentController {
             console.error('Payment not found:', paymentId);
             return;
         }
-        // if (payment) {
+
         await PaymentModel.findByIdAndUpdate(payment._id, {
             amountRefunded: refund.amount / 100,
             refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
@@ -525,7 +565,12 @@ export class PaymentController {
                 .populate('products.productId')
                 .populate('products.productVariantId');
             console.log("handleRefundEvent function Order", order)
-            const stockUpdates = order.products.flatMap(product => [
+            const eligibleProductIds = JSON.stringify(refund.notes?.eligibleProductIds || '[]')
+
+            console.log("eligibleProductIds", eligibleProductIds)
+            const stockUpdates = order.products.
+            filter(product=>eligibleProductIds.includes(product.productId.toString()))
+            .flatMap(product => [
                 {
                     updateOne: {
                         filter: { _id: product.productId },
@@ -576,7 +621,7 @@ export class PaymentController {
                 }
             );
         }
-        
+
     }
 
 

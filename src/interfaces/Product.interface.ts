@@ -13,6 +13,10 @@ interface ProductInterface extends Document {
     subCategoryId: string
     userId: string
 
+    refundPolicy: 'no-refund' | '7-days' | '30-days' | 'custom',
+    replacementPolicy: 'no-replacement' | '7-days' | '30-days' | 'custom',
+    customPolicyDetails: string
+
 }
 
 export default ProductInterface;

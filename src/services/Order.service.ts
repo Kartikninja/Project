@@ -17,7 +17,9 @@ import { razorpayInstance } from '@/controllers/Payment.controller';
 import { Order } from '@/interfaces/Order.interface';
 import { UserSubscriptionModel } from '@/models/UserSubscriptionSchema.model';
 import { SubscriptionModel } from '@/models/Subscription.model';
-
+import { v4 as uuidv4 } from 'uuid'
+import { Queue } from 'bullmq';
+import { REDIS_HOST, REDIS_PORT } from '@/config';
 
 
 @Service()
@@ -40,15 +42,16 @@ class OrderService {
         try {
             let totalPrice = 0;
             const createOrder = []
-            const calculateDiscountedPrice = async (discountCode: string, productId: string, variantId: string, quantity: number, currentPrice: number) => {
-                const cartItem = [{
-                    Product_id: productId,
-                    quantity: quantity,
-                    variant: { price: currentPrice },
-                    discountCode: discountCode
-                }]
+
+            const calculateDiscountedPrice = async (discountCode: string, productId: string, variantId: string, quantity: number, currentPrice: number):
+                Promise<{ finalPrice: number; discountAmount: number; discountType: 'percentage' | 'fixed' | 'none' }> => {
+
 
                 let finalPrice = currentPrice * quantity
+                let discountAmount = 0;
+
+                let discountType: 'percentage' | 'fixed' | 'none' = 'none';
+
                 if (discountCode) {
                     const discount = await DiscountModel.findOne({
                         code: discountCode,
@@ -68,9 +71,12 @@ class OrderService {
                             if (discount.unit === null || quantity >= discount.unit) {
                                 if (discount.discount_type === Discount_TYPE.PERCENTAGE) {
                                     itemDiscount = (itemAmount * discount.value) / 100
+                                    discountType = 'percentage';
                                 } else {
                                     itemDiscount = discount.value
+                                    discountType = 'fixed';
                                 }
+                                discountAmount = itemAmount * quantity
                             }
                             finalPrice = (itemAmount - itemDiscount) * quantity
                         }
@@ -79,15 +85,25 @@ class OrderService {
 
                     }
                 } else {
+                    const cartItem = [{
+                        Product_id: productId,
+                        quantity: quantity,
+                        variant: { price: currentPrice },
+                        discountCode: discountCode
+                    }]
                     console.log("No Discount Code Provided. Using getApplicableDiscount for product discount.");
-                    const appliedDiscount = await this.getApplicableDiscount(cartItem)
-                    let productDiscount = 0
+
+                    const appliedDiscount = await this.getApplicableDiscount(cartItem);
                     if (appliedDiscount) {
-                        productDiscount = appliedDiscount.discountAmount
+                        discountAmount = appliedDiscount.discountAmount;
+                        discountType = appliedDiscount.discount_type as 'percentage' | 'fixed' | 'none';
+                        finalPrice = (currentPrice * quantity) - appliedDiscount.discountAmount;
                     }
-                    finalPrice = (currentPrice * quantity) - productDiscount
+                    console.log(`This ${productId} has  discount  ${discountAmount} and this is finalPrice : ${finalPrice}`)
+                    // finalPrice = (currentPrice * quantity) - productDiscount
                 }
-                return finalPrice
+
+                return { finalPrice, discountAmount, discountType }
 
 
             }
@@ -105,24 +121,39 @@ class OrderService {
 
                 const subCategory = await SubCategory.findById(productData.subCategoryId);
                 const variantPrice = productVariant.price || 0;
-                const discountedPrice = await calculateDiscountedPrice(discountCode, productId, productVariantId.toString(), quantity, variantPrice);
-                totalPrice += discountedPrice
-                console.log(`totalPrice ${totalPrice} and discountedPrice ${discountedPrice}`)
 
-                totalPrice = await this.discountForSubscription(totalPrice, userId)
+
+
+
+                const { finalPrice, discountAmount, discountType } = await calculateDiscountedPrice(discountCode, productId, productVariantId.toString(), quantity, variantPrice);
+                totalPrice += finalPrice
+                console.log(`calculateDiscountedPrice=>   totalPrice  ${totalPrice} and discountedPrice ${discountAmount}`)
+
 
                 createOrder.push({
                     productId,
                     productVariantId,
                     quantity,
-                    finalPrice: discountedPrice
+                    finalPrice: finalPrice,
+                    refundPolicy: productData.refundPolicy,
+                    replacementPolicy: productData.replacementPolicy,
+
+                    discountedPrice: finalPrice,  // Same as finalPrice (total after discount)
+                    discountAmount: discountAmount, // Total discount applied
+                    discountType: discountType,   // Type of discount applied
+
                 });
 
-                console.log(`Discounted price for product ${productId}: ${discountedPrice}`);
+                console.log(`Discounted price for product ${productId}: ${finalPrice}`);
 
 
             }
+            console.log(`totalPrice ${totalPrice} `)
 
+            const { finalPrice, SubScriptiondiscountAmount } = await this.discountForSubscription(totalPrice, userId);
+            totalPrice = finalPrice;
+
+            console.log(`discountForSubscription=>totalPrice ${totalPrice} and finalPrice ${finalPrice}`)
 
             const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order');
             console.log('payment', payment);
@@ -132,12 +163,13 @@ class OrderService {
                 order_Id,
                 userId,
                 storeId,
-                products,
+                products: createOrder,
                 totalPrice,
                 shippingAddress,
                 orderStatus: 'pending',
                 paymentStatus: 'unpaid',
                 orderId: payment.orderId,
+                subScriptionDiscount: SubScriptiondiscountAmount
 
             });
 
@@ -184,7 +216,6 @@ class OrderService {
                 order.id
             );
 
-
             const populatedProducts = await Promise.all(
                 createOrder.map(async (product) => {
                     const productData = await Product.findById(product.productId);
@@ -204,6 +235,9 @@ class OrderService {
                     };
                 })
             );
+
+
+
 
 
 
@@ -235,99 +269,179 @@ class OrderService {
     }
 
 
-    public async discountForSubscription(totalPrice: number, userId: string) {
+
+
+    public generateTrackingNumber(): string {
+        return 'TRK-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    }
+
+
+
+
+    public async discountForSubscription(totalPrice: number, userId: string): Promise<any> {
+        let SubScriptiondiscountAmount = 0
         const userSubscription = await UserSubscriptionModel.findOne({ userId: userId, isActive: true, expiry: { $gte: new Date() }, paymentStatus: 'paid' })
         if (!userSubscription) {
-            console.log("subscription Not found for this user")
-            return totalPrice
+            console.log("subscription Not found for this user");
+            console.log("totalPrice", totalPrice);
+            return { finalPrice: totalPrice, SubScriptiondiscountAmount: 0 };
         }
         console.log("userSubscription", userSubscription)
         const subscription = await SubscriptionModel.findOne({ _id: userSubscription.subscriptionId })
         if (!subscription) {
-            return totalPrice
+
+            return { finalPrice: totalPrice, SubScriptiondiscountAmount: 0 }
         }
-        let discountAmount = 0
 
         switch (userSubscription.subscriptionType) {
             case SUBSCRIPTIONS_TYPES.BASIC:
-                discountAmount = totalPrice * 0.05;
-                console.log(`Discount Amount is ${discountAmount} for BASIC`)
+                SubScriptiondiscountAmount = totalPrice * 0.05;
+                console.log(`Discount Amount is ${SubScriptiondiscountAmount} for BASIC`)
                 break;
             case SUBSCRIPTIONS_TYPES.PREMIUM:
-                discountAmount = totalPrice * 0.10;
-                console.log(`Discount Amount is ${discountAmount} for PREMIUM`)
+                SubScriptiondiscountAmount = totalPrice * 0.10;
+                console.log(`Discount Amount is ${SubScriptiondiscountAmount} for PREMIUM`)
 
                 break;
             case SUBSCRIPTIONS_TYPES.ULTIMATE:
-                discountAmount = totalPrice * 0.15;
-                console.log(`Discount Amount is ${discountAmount} for ULTIMATE`)
+                SubScriptiondiscountAmount = totalPrice * 0.15;
+                console.log(`Discount Amount is ${SubScriptiondiscountAmount} for ULTIMATE`)
 
                 break;
             default:
                 console.log("No subscription discount  for This user")
-                discountAmount = 0;
+                SubScriptiondiscountAmount = 0;
         }
 
-        const finalPrice = Math.max(totalPrice - discountAmount, 0);
-        console.log(`User has an active subscription. Discount applied: ${discountAmount}. Final Price: ${finalPrice}`);
 
-        return finalPrice;
+
+        const finalPrice = Math.max(totalPrice - SubScriptiondiscountAmount, 0);
+        console.log(`User has an active subscription. Discount applied: ${SubScriptiondiscountAmount}. Final Price: ${finalPrice}`);
+
+        return { finalPrice, SubScriptiondiscountAmount };
 
     }
 
 
 
     public async cancelOrder(id: string, userId: string, cancellationReason?: string): Promise<any> {
-
         try {
-            const order = await OrderModel.findOne({ _id: id, userId: userId });
+            const order = await OrderModel.findOne({ _id: id, userId });
             if (!order) throw new HttpException(404, 'Order not found');
 
             if (order.orderStatus === 'cancelled') {
                 throw new HttpException(400, 'Order already cancelled');
             }
 
-            if (order.paymentStatus !== 'paid') {
-                throw new HttpException(400, 'Order not paid');
+            let refundAmount = 0;
+            const eligibleProducts: any[] = [];
+            const now = new Date();
+            if ((order.orderStatus === 'pending' && order.paymentStatus === 'paid') || order.orderStatus === 'confirmed') {
+                refundAmount = order.totalPrice;
+                eligibleProducts.push(...order.products);
+            }
+            else if (['shipped', 'out_for_delivery', 'delivered'].includes(order.orderStatus)) {
+                for (const product of order.products) {
+                    const { shippingStatus, refundPolicy, deliveredAt, quantity, productId, discountedPrice } = product;
+                    const ProductPrice = await Product.findById({ _id: product.productId })
+
+                    let isEligible = false
+                    if (shippingStatus === 'delivered' || shippingStatus === 'shipped' || shippingStatus === 'out_for_delivery') {
+                        if (deliveredAt && this.isEligibleForRefund(refundPolicy, new Date(deliveredAt))) {
+                            isEligible = true
+                        }
+                    } else {
+                        isEligible = true
+                    }
+                    if (isEligible) {
+                        refundAmount += discountedPrice
+                        eligibleProducts.push(productId)
+                        console.log(`This Product ${product.productId} has refund Amount is :${refundAmount}`)
+                    }
+
+                }
+            } else {
+                throw new HttpException(400, 'Order cannot be cancelled in its current status');
             }
 
-            if (!order.paymentId) {
-                throw new HttpException(400, 'Payment ID missing for refund processing');
+            if (refundAmount <= 0) {
+                throw new HttpException(400, 'No eligible products for refund');
             }
 
-            const refundNotes = {
-                cancelledBy: userId.toString(),
-                reason: cancellationReason || 'Order cancelled by user'
+            console.log(`Total Refund Amount is :${refundAmount}`)
+            const refund = await razorpayInstance.payments.refund(order.paymentId, {
+                amount: Math.round(refundAmount * 100),
+                speed: 'normal',
+                notes: {
+                    reason: cancellationReason || 'No reason provided',
+                    cancelledBy: userId.toString(),
+                    eligibleProducts: eligibleProducts.map(p => p.productId).join(', ')
+                }
+            });
+            console.log('refund', refund)
+
+            const updateData: any = {
+                orderStatus: 'cancelled',
+                refundStatus: refundAmount === order.totalPrice ? 'refunded' : 'partial',
+                cancelledAt: new Date(),
+                cancellationReason,
+                $push: {
+                    cancellationHistory: {
+                        date: new Date(),
+                        amount: refundAmount,
+                        reason: cancellationReason,
+                        refundId: refund.id
+                    }
+                }
             };
 
-            let refund;
-            try {
-                refund = await razorpayInstance.payments.refund(order.paymentId, {
-                    amount: Math.round(order.totalPrice * 100),
-                    speed: 'normal',
-                    notes: refundNotes
-                });
-            } catch (refundError) {
-                console.error("Refund Failed:", refundError);
-                throw new HttpException(500, 'Refund processing failed');
-            }
+            updateData.products = order.products.map(p => {
+                const isEligible = eligibleProducts.some(ep => ep._id.equals(p.productId));
+                return {
+                    ...p,
+                    refundStatus: isEligible ? 'approved' : 'rejected',
+                    cancellationStatus: isEligible ? 'approved' : 'rejected'
+                };
+            });
 
-            console.log("Order Cancelled Refund", refund);
+            const updatedOrder = await OrderModel.findByIdAndUpdate(id, updateData, { new: true });
 
             return {
                 success: true,
-                amount: order.totalPrice,
-                message: "Your order has been cancelled and refunded."
+                refundAmount,
+                currency: 'INR',
+                refundId: refund.id,
+                message: `Cancelled successfully. ${refundAmount} INR refunded.`
             };
 
         } catch (error) {
-            console.error('Error cancelling order:', error);
-            throw new HttpException(500, 'Failed to cancel order');
+            console.error('Cancellation failed:', error);
+            throw new HttpException(500, 'Cancellation failed: ' + error.message);
         }
     }
 
+    private isEligibleForRefund(policy: string, deliveredAt: Date): boolean {
+        const now = new Date();
+        const deliveredTime = deliveredAt.getTime();
+        const currentTime = now.getTime();
 
+        if (deliveredTime > currentTime) return false;
 
+        const timeDifference = currentTime - deliveredTime;
+        console.log("timeDifference", timeDifference)
+        const daysElapsed = Math.floor(timeDifference / (1000 * 3600 * 24));
+
+        switch (policy) {
+            case 'no-refund':
+                return false;
+            case '7-days':
+                return daysElapsed <= 7;
+            case '30-days':
+                return daysElapsed <= 30;
+            default:
+                return false;
+        }
+    }
 
 
     public async getOrderById(orderId: string): Promise<any> {
@@ -369,6 +483,8 @@ class OrderService {
             let finalItemPrice = itemAmount;
             const itemQuantity = cartItem.quantity;
 
+
+
             const productDiscount = await DiscountModel.findOne({
                 isActive: true,
                 $or: [
@@ -396,14 +512,18 @@ class OrderService {
                         }
                         finalItemPrice = itemAmount - itemDiscount;
                         discountBreakdown.push({
-                            discountType: 'product',
+                            discountAppliedType: 'product',
                             productId: cartItem.Product_id,
                             originalPrice: itemAmount,
                             quantity: cartItem.quantity,
                             discountApplied: itemDiscount,
                             finalPrice: finalItemPrice,
                             dateRange: productDiscount.start_date && productDiscount.end_date ?
-                                `${productDiscount.start_date.toLocaleDateString()} to ${productDiscount.end_date?.toLocaleDateString()}` : 'No date restrictions'
+                                `${productDiscount.start_date.toLocaleDateString()} to ${productDiscount.end_date?.toLocaleDateString()}` : 'No date restrictions',
+                            discountedPrice: finalItemPrice,
+                            discountAmount: itemDiscount,
+                            discountType: productDiscount.discount_type,
+
                         });
                     }
                 }
@@ -435,14 +555,18 @@ class OrderService {
                             }
                             finalItemPrice = itemAmount - itemDiscount;
                             discountBreakdown.push({
-                                discountType: 'subcategory',
+                                discountAppliedType: 'subcategory',
                                 productId: cartItem.Product_id,
                                 originalPrice: itemAmount,
                                 quantity: itemQuantity,
                                 discountApplied: itemDiscount,
                                 finalPrice: finalItemPrice,
                                 dateRange: subCategoryDiscount.start_date && subCategoryDiscount.end_date ?
-                                    `${subCategoryDiscount.start_date.toLocaleDateString()} to ${subCategoryDiscount.end_date?.toLocaleDateString()}` : 'No date restrictions'
+                                    `${subCategoryDiscount.start_date.toLocaleDateString()} to ${subCategoryDiscount.end_date?.toLocaleDateString()}` : 'No date restrictions',
+
+                                discountedPrice: finalItemPrice,
+                                discountAmount: itemDiscount,
+                                discountType: productDiscount.discount_type,
                             });
                         }
                     }
@@ -474,14 +598,18 @@ class OrderService {
                                 }
                                 finalItemPrice = itemAmount - itemDiscount;
                                 discountBreakdown.push({
-                                    discountType: 'category',
+                                    discountAppliedType: 'category',
                                     productId: cartItem.Product_id,
                                     originalPrice: itemAmount,
                                     quantity: itemQuantity,
                                     discountApplied: itemDiscount,
                                     finalPrice: finalItemPrice,
                                     dateRange: categoryDiscount.start_date && categoryDiscount.end_date ?
-                                        `${categoryDiscount.start_date.toLocaleDateString()} to ${categoryDiscount.end_date?.toLocaleDateString()}` : 'No date restrictions'
+                                        `${categoryDiscount.start_date.toLocaleDateString()} to ${categoryDiscount.end_date?.toLocaleDateString()}` : 'No date restrictions',
+
+                                    discountedPrice: finalItemPrice,
+                                    discountAmount: itemDiscount,
+                                    discountType: productDiscount.discount_type,
                                 });
                             }
                         }
@@ -498,9 +626,9 @@ class OrderService {
 
         if (totalDiscount > 0) {
 
-            const productDiscounts = discountBreakdown.filter(d => d.discountType === 'product');
-            const subCategoryDiscounts = discountBreakdown.filter(d => d.discountType === 'subcategory');
-            const categoryDiscounts = discountBreakdown.filter(d => d.discountType === 'category');
+            const productDiscounts = discountBreakdown.filter(d => d.discountAppliedType === 'product');
+            const subCategoryDiscounts = discountBreakdown.filter(d => d.discountAppliedType === 'subcategory');
+            const categoryDiscounts = discountBreakdown.filter(d => d.discountAppliedType === 'category');
 
             const calculateTotals = (discounts: any[]) => ({
                 originalTotal: discounts.reduce((sum, d) => sum + d.originalPrice, 0),

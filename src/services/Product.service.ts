@@ -103,7 +103,7 @@ class ProductService {
         return product;
     }
 
-    public async deleteProduct(storeId: string, productId: string): Promise<void> {
+    public async deleteProduct(storeId: string, productId: string) {
 
         const deleteProduct = await Product.findByIdAndDelete({ _id: productId, storeId: storeId });
         if (!deleteProduct) {

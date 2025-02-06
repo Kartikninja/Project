@@ -1,10 +1,30 @@
 import { Schema } from "mongoose";
 
 export interface OrderProduct {
+
     productId: Schema.Types.ObjectId;
     quantity: number;
     price: number;
     productVariantId: Schema.Types.ObjectId;
+    refundStatus: 'none' | 'requested' | 'approved' | 'rejected' | 'processed';
+    replacementStatus: 'none' | 'requested' | 'approved' | 'rejected' | 'processed';
+    refundPolicy: string;
+    replacementPolicy: string;
+    deliveredAt?: Date;
+    shippedAt?: Date;
+    shippingStatus: 'pending' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'returned';
+    trackingNumber?: string;
+    courierPartner?: string;
+    estimatedDelivery?: Date;
+    deliveryAgentName?: string;
+    deliveryAgentPhone?: string;
+
+
+    discountedPrice: number
+    discountAmount: number
+    discountType: 'percentage' | 'fixed' | 'none'
+
+
 }
 
 export interface Order {
@@ -27,7 +47,10 @@ export interface Order {
     amountToSeller: number
     payoutStatus: 'pending' | 'processed' | 'processing' | 'rejected' | 'reversed' | "queued" | "failed"
     refundId: string
+    cancellationReason?: string;
+    cancelledAt?: Date;
+    refundStatus: 'refunded' | 'partial' | 'not-refunded'
 
-
-    refundStatus: 'refunded' | 'partial'
+    subScriptionDiscount: number
 }
+

@@ -17,6 +17,9 @@ const CategorySchema: Schema = new Schema(
             ref: 'Store',
             required: true,
         },
+        refundPolicy: { type: String, enum: ['no-refund', '7-days', '30-days', 'custom'], default: 'no-refund', required: false },
+        replacementPolicy: { type: String, enum: ['no-replacement', '7-days', '30-days', 'custom'], default: 'no-replacement', required: false },
+        customPolicyDetails: { type: String, required: false }
 
     },
     { timestamps: true }
