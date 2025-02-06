@@ -83,7 +83,8 @@ const UserSubscriptionSchema: Schema = new Schema({
     cancellationReason: {
         type: String,
         default: null
-    }
+    },
+    subscriptionType: { type: Number, required: true },
 
 
 }, { timestamps: true });

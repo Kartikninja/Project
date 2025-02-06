@@ -141,7 +141,8 @@ export const sendpurchaseSubscriptionemail = async (details: any) => {
     startDate: details.subscriptionDetails.startDate,
     endDate: details.subscriptionDetails.endDate,
     price: details.subscriptionDetails.price,
-    isAutoRenew: details.subscriptionDetails.isAutoRenew ? 'Yes' : 'No', // Convert to readable format
+    isAutoRenew: details.subscriptionDetails.isAutoRenew ? 'Yes' : 'No',
+    subscriptionType: details.subscriptionDetails.subscriptionType,
     mailTitle: 'Thank you for your subscription!',
     appName,
     year,

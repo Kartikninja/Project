@@ -89,7 +89,7 @@ export class PayoutService {
 
 
     public async amoutToSeller(fundAccountId: string, amout: number, sellerData: any) {
-        console.log("sellerData", sellerData)
+        // console.log("sellerData", sellerData)
         const payoutData = {
 
             account_number: RAZORPAYX_ACCOUNT_NUMBER,

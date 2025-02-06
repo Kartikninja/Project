@@ -18,7 +18,7 @@ import Redis, { Redis as RedisClient } from 'ioredis'
 import { cron1 } from './utils/corn/node-corn';
 import { initializeSocket } from './utils/socket/socket';
 import { Server } from 'socket.io';
-import { initializePayoutWorker }  from './workers/payout.worker';
+import { initializePayoutWorker, initializeShippingWorker } from './workers/payout.worker';
 
 
 export class App {
@@ -73,6 +73,7 @@ export class App {
 
     initializePayoutWorker()
     // initializeRefundWorker()
+    initializeShippingWorker()
   }
 
 

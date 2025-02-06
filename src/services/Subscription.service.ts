@@ -21,9 +21,9 @@ export class SubscriptionService {
 
     }
 
-    public async add(SubscriptionData: Subscription) {
+    public async CreateSubscription(SubscriptionData: Subscription) {
 
-        const checkName = await SubscriptionModel.find({ name: SubscriptionData.name })
+        const checkName = await SubscriptionModel.find({ name: { $regex: new RegExp(`^${SubscriptionData.name}`) } })
         console.log(checkName)
         if (checkName.length > 0) {
             throw new HttpException(409, `${SubscriptionData.name} name is already exists`)
@@ -35,7 +35,7 @@ export class SubscriptionService {
                 interval: 1,
                 item: {
                     name: SubscriptionData.name,
-                    amount: SubscriptionData.price * 100,
+                    amount: Math.round(SubscriptionData.price * 100),
                     currency: 'INR',
                     description: SubscriptionData.benefite.join(', '),
                 },
@@ -52,6 +52,8 @@ export class SubscriptionService {
         await newSubscription.save()
         return newSubscription;
     }
+
+
 
     public async getById(id: string) {
 

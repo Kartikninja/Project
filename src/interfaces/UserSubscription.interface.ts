@@ -25,6 +25,8 @@ export interface UserSubscription extends Document {
     refundAmount: number
     refundId: string
     cancellationReason: string
+
+    subscriptionType: number
 }
 
 

@@ -54,6 +54,7 @@ export class PaymentService {
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 modelName,
+                refundId: null
             };
             const newPayment = new PaymentModel(paymentData);
             await newPayment.save()

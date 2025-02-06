@@ -27,10 +27,10 @@ export class UserSubscriptionService {
     private notification = Container.get(NotificationService)
     private razorpayService = Container.get(RazorpayService)
 
-    public async addSubscription(userId: string, subscriptionId: string, startDate: Date, isAutoRenew: boolean) {
+    public async UserPurchase(userId: string, subscriptionId: string, startDate: Date, isAutoRenew: boolean, subscriptionType: number) {
 
 
-        const checkSub = await SubscriptionModel.findById({ _id: subscriptionId, isActive: true })
+        const checkSub = await SubscriptionModel.findById({ _id: subscriptionId, isActive: true, type: subscriptionType })
 
         if (!checkSub) {
             throw new HttpException(409, 'Subscription not found')
@@ -47,7 +47,18 @@ export class UserSubscriptionService {
         }
 
         const startDateSelect = startDate || new Date();
-        const endDate = new Date(startDateSelect)
+        const endDate = new Date(startDate)
+        switch (checkSub.period) {
+            case 'monthly':
+                endDate.setMonth(endDate.getMonth() + 1)
+                break
+            case 'yearly':
+                endDate.setFullYear(endDate.getFullYear() + 1);
+                break;
+            case 'weekly':
+                endDate.setDate(endDate.getDate() + 7)
+                break
+        }
         const newPayment = await this.payment.createRazorpayOrder(price, userId, 'razorpay', 'UserSubScription')
 
         const paymentLink = await this.payment.createRazorpayPaymentLink(
@@ -64,7 +75,7 @@ export class UserSubscriptionService {
 
 
         // endDate.setMonth(endDate.getMonth() + (checkSub.type === 2 ? 1 : 12))
-        endDate.setMinutes(endDate.getMonth() + 2);
+        // endDate.setMinutes(endDate.getMonth() + 2);
 
         const userSubscriptionData = {
             userId,
@@ -76,6 +87,7 @@ export class UserSubscriptionService {
             expiry: endDate,
             price,
             orderId: newPayment.orderId,
+            subscriptionType
 
 
         };
@@ -127,7 +139,8 @@ export class UserSubscriptionService {
                 isAutoRenew,
                 subscriptionId,
             },
-            subscriptionId: subscriptionId
+            subscriptionId: subscriptionId,
+            subscriptionType
         };
 
         await sendpurchaseSubscriptionemail(emailData)
@@ -140,6 +153,7 @@ export class UserSubscriptionService {
             userId: savedSubscription.userId,
             name: checkSub.name,
             price: savedSubscription.price,
+            subscriptionType
         }
 
 

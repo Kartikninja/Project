@@ -7,17 +7,17 @@ export class UserSubscriptionController {
 
     private userSub = Container.get(UserSubscriptionService)
 
-    public add = async (req: Request, res: Response, next: NextFunction) => {
+    public userBuySubscription = async (req: Request, res: Response, next: NextFunction) => {
 
         try {
             const userId = req.user._id
             const { subscriptionId } = req.params;
 
 
-            const { startDate, isAutoRenew } = req.body;
+            const { startDate, isAutoRenew, subscriptionType } = req.body;
             const { subscription, paymentDetails,
                 paymentLink
-            } = await this.userSub.addSubscription(userId, subscriptionId, startDate, isAutoRenew);
+            } = await this.userSub.UserPurchase(userId, subscriptionId, startDate, isAutoRenew, subscriptionType);
             res.json({
                 message: "Subscription added successfully", status: true, subscription, paymentDetails,
                 paymentLink

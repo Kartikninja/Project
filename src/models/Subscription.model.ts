@@ -7,8 +7,8 @@ const SubscriptionSchema: Schema = new Schema({
     type: {
         type: Number,
         required: true,
-        enum: SUBSCRIPTIONS_TYPES,
-        default: 1
+        enum: Object.values(SUBSCRIPTIONS_TYPES),
+        default: SUBSCRIPTIONS_TYPES.FREE
     },
     price: {
         type: Number,

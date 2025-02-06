@@ -153,6 +153,7 @@ export class RazorpayService {
                 start_at: adjustedStartAt,
                 notes: {
                     user_id: subScriptionData.userId,
+                    subscription_type: subScriptionData.subscriptionType,
                 },
                 addons: [
                     {

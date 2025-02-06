@@ -15,7 +15,7 @@ export class UserSubscriptionRoute implements Routes {
     }
 
     private initializeRoutes() {
-        this.router.post(`${this.path}/:subscriptionId`, AuthMiddleware, this.userSubscriptionController.add);
+        this.router.post(`${this.path}/:subscriptionId`, AuthMiddleware, this.userSubscriptionController.userBuySubscription);
         this.router.get(`${this.path}/getAll`, this.userSubscriptionController.getAll)
         this.router.get(`${this.path}/:id`, this.userSubscriptionController.getById)
         this.router.delete(`${this.path}/:id`, isAdmin, this.userSubscriptionController.delete)

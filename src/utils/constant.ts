@@ -12,12 +12,20 @@ export enum PLATFORMS {
   other = 5,
 }
 
+// export enum SUBSCRIPTIONS_TYPES {
+//   FREE = 1,
+//   MONTHLY = 2,
+//   YEARLY = 3,
+//   WEEKLY = 4
+// }
+
 export enum SUBSCRIPTIONS_TYPES {
   FREE = 1,
-  MONTHLY = 2,
-  YEARLY = 3,
-  WEEKLY = 4
+  BASIC = 2,
+  PREMIUM = 3,
+  ULTIMATE = 4,
 }
+
 
 export enum Discount_TYPE {
   PERCENTAGE = 1,

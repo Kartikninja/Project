@@ -38,6 +38,41 @@ const OrderSchema: Schema = new Schema<Order>(
                     ref: 'ProductVariant',
                     required: true
                 },
+
+                refundStatus: {
+                    type: String,
+                    enum: ['none', 'requested', 'approved', 'rejected', 'processed'],
+                    default: 'none'
+                },
+                replacementStatus: {
+                    type: String,
+                    enum: ['none', 'requested', 'approved', 'rejected', 'processed'],
+                    default: 'none'
+                },
+                deliveredAt: { type: Date },
+                refundPolicy: { type: String, required: false },
+
+                replacementPolicy: { type: String, required: false },
+
+
+                shippingStatus: {
+                    type: String,
+                    enum: ['pending', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'returned'],
+                    default: 'pending'
+                },
+                trackingNumber: { type: String, required: false },
+                courierPartner: { type: String, required: false },
+                estimatedDelivery: { type: Date, required: false },
+                shippedAt: { type: Date },
+                deliveryAgentName: { type: String, required: false },
+                deliveryAgentPhone: { type: String, required: false },
+
+
+                discountedPrice: { type: Number, required: true },
+                discountAmount: { type: Number, required: true },
+                discountType: { type: String, enum: ['percentage', 'fixed', 'none'], default: 'none' }
+
+
             }
         ],
         totalPrice: {
@@ -46,7 +81,7 @@ const OrderSchema: Schema = new Schema<Order>(
         },
         orderStatus: {
             type: String,
-            enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+            enum: ['pending', 'confirmed', 'shipped', 'delivered', 'out_for_delivery', 'cancelled'],
             default: 'pending'
         },
         paymentStatus: {
@@ -76,7 +111,8 @@ const OrderSchema: Schema = new Schema<Order>(
         taxAmount: { type: Number, default: 0 },
         shippingCost: { type: Number, default: 0 },
         refundId: { type: String, required: false },
-        refundStatus: { type: String, enum: ['refunded', 'partial'] }
+        refundStatus: { type: String, enum: ['refunded', 'partial', 'not-refunded'], default: 'not-refunded' },
+        subScriptionDiscount: { type: Number, default: 0 }
 
     },
     {
