@@ -25,6 +25,7 @@ import { ExpressAdapter } from '@bull-board/express';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { Queue } from 'bullmq';
+import { payoutQueue, shippingQueue } from './workers/Queue';
 
 export class App {
   // private initializeErrorHandling() {
@@ -90,22 +91,9 @@ export class App {
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/admin/queues');
 
-    const payoutQueue = new Queue('payouts', {
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: Number(process.env.REDIS_PORT) || 6379,
-      },
-    });
-
-    const shipping = new Queue('shipping', {
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: Number(process.env.REDIS_PORT) || 6379,
-      }
-    })
 
     createBullBoard({
-      queues: [new BullMQAdapter(payoutQueue), new BullMQAdapter(shipping)],
+      queues: [new BullMQAdapter(payoutQueue), new BullMQAdapter(shippingQueue)],
       serverAdapter,
     });
     this.app._router.stack.forEach(layer => {

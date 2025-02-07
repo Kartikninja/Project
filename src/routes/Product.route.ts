@@ -17,7 +17,10 @@ class ProductRouter {
         this.router.get(`${this.path}/:id`, this.productController.getProductById);
         this.router.put(`${this.path}/:id`, AuthMiddlewareStore, this.productController.updateProduct);
         this.router.delete(`${this.path}/:id`, AuthMiddlewareStore, this.productController.deleteProduct);
+        this.router.get(`${this.path}/get/search`, this.productController.searchProduct)
         this.router.get(`${this.path}/getAll/category`, this.productController.getProductsByCategory)
+
+
     }
 }
 

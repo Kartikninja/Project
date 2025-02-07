@@ -77,4 +77,16 @@ export class CategoryController {
         }
     };
 
+
+    public searchCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.categoryService.searchCategory(req.query)
+            res.status(200).json({ success: true, result, message: "Category Recived" });
+
+
+        } catch (err) {
+            next(err)
+        }
+    }
+
 }

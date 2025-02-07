@@ -40,6 +40,9 @@ const SubCategorySchema: Schema = new Schema(
     }
 );
 
+SubCategorySchema.index({ name: 'text', description: 'text' }, { weights: { name: 10, description: 5 } })
+SubCategorySchema.index({ storeId: 1, categoryId: 1 })
+SubCategorySchema.index({ createdAt: -1 })
 
 export const SubCategory = model<SubCategoryInterface & Document>('SubCategory', SubCategorySchema);
 

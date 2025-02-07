@@ -5,7 +5,8 @@ import { StoreModel } from '@/models/Store.model';
 import { HttpException } from '@/exceptions/httpException';
 import { SubCategory } from '@/models/SubCategory.model';
 import { Category } from '@/models/Category.model';
-
+import { redisClient } from '@/utils/redisClient';
+import { FilterQuery } from 'mongoose';
 
 @Service()
 class ProductService {
@@ -32,10 +33,30 @@ class ProductService {
     }
 
     public getAllProducts = async (): Promise<ProductInterface[]> => {
-        return Product.find();
+
+        const catchKey = 'getAllProducts'
+        const redisData = await redisClient.get(catchKey)
+        if (redisData) {
+            console.log("Data Catch from redis")
+
+            return JSON.parse(redisData)
+        }
+
+        const product = await Product.find();
+        await redisClient.set(catchKey, JSON.stringify(product), 'EX', 3600)
+        return product
     };
 
     public getAllProductsGrouped = async (): Promise<any[]> => {
+        const cacheKey = 'allProductsGrouped'
+
+        const cachedData = await redisClient.get(cacheKey)
+        if (cachedData) {
+            console.log("Data Catch from redis")
+            return JSON.parse(cachedData)
+        }
+
+
         const categories = await Category.find();
 
         const result = [];
@@ -56,11 +77,14 @@ class ProductService {
                 });
             }
 
+
+
             result.push({
                 category: category.name,
                 subCategories: subCategoryProducts,
             });
         }
+        await redisClient.set(cacheKey, JSON.stringify(result), 'EX', 3600)
 
         return result;
     };
@@ -111,6 +135,61 @@ class ProductService {
         }
         return deleteProduct;
     }
+
+
+    public async searchProduct(queryParams: any) {
+
+        const { search, subCategoryId, storeId, minPrice, maxPrice, sortBy, sortOrder, page = 1, limit = 10 } = queryParams;
+        let filter: FilterQuery<typeof Product> = {}
+        if (search) {
+            filter.$text = { $search: search }
+        }
+        if (subCategoryId) filter.sabCategoryId = subCategoryId
+        if (storeId) filter.storeId = storeId
+
+        if (minPrice || maxPrice) {
+            filter.price = {}
+            if (minPrice) filter.price.$gte = minPrice
+            if (maxPrice) filter.price.$lte = maxPrice
+
+        }
+
+        let sortOptions: any = {}
+        if (sortBy) {
+            sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1
+        } else {
+            sortOptions.createdAt = -1
+        }
+
+        const skip = (page - 1) * limit
+
+        const catchKey = `search:${JSON.stringify(queryParams)}`
+        const cachedData = await redisClient.get(catchKey)
+        if (cachedData) {
+            console.log("Data is catch from redis")
+            return JSON.parse(cachedData)
+        }
+        console.log('Cache miss. Fetching from MongoDB...');
+
+        const products = await Product.find(filter)
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(Number(limit))
+
+        const totalCount = await Product.countDocuments(filter)
+
+        const result = {
+            products,
+            totalCount,
+            currentPage: page,
+            totalPage: Math.ceil(totalCount / limit)
+        }
+        await redisClient.set(catchKey, JSON.stringify(result), 'EX', 3600)
+        return result
+    }
+
+
+
 }
 
 export default ProductService;

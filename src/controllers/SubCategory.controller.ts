@@ -64,7 +64,15 @@ class SubCategoryController {
         }
     }
 
+    public searchSubcategory = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const result = await this.subCategoryService.searchSubCategory(req.query)
+            res.status(200).json({ data: result, message: 'SubCategory Recive' })
 
+        } catch (err) {
+            next(err)
+        }
+    }
 }
 
 export default SubCategoryController;

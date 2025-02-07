@@ -20,6 +20,7 @@ import { StoreDocument } from '@/interfaces/Store.interface';
 import { RAZORPAY_API_SECRET, WEBHOOK_SECRET, RAZORPAY_API_KEY, RAZORPAYX_API_KEY, RAZORPAYX_API_SECRET, RAZORPAYX_WEBHOOK_SECRET, REDIS_HOST, REDIS_PORT } from '@config'
 import { Queue } from 'bullmq';
 import { PayoutService } from '@/services/payout.service';
+import { payoutQueue, shippingQueue } from '@/workers/Queue';
 
 
 
@@ -354,15 +355,6 @@ export class PaymentController {
                     },
                     { new: true }
                 );
-
-
-
-                const payoutQueue = new Queue('payouts', {
-                    connection: {
-                        host: REDIS_HOST,
-                        port: Number(REDIS_PORT),
-                    },
-                });
                 if (updatedOrder.paymentStatus === 'paid' && updatedOrder.orderStatus !== 'cancelled') {
 
                     await payoutQueue.add(
@@ -391,13 +383,6 @@ export class PaymentController {
                 }
 
                 if (updatedOrder.paymentStatus === 'paid') {
-                    const shippingQueue = new Queue('shipping', {
-                        connection: {
-                            host: REDIS_HOST,
-                            port: Number(REDIS_PORT),
-                        },
-                    });
-
                     for (const product of updatedOrder.products) {
                         const trackingNumber = this.generateTrackingNumber();
                         console.log("trackingNumber", trackingNumber)
