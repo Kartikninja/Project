@@ -527,15 +527,6 @@ export class PaymentController {
         await subscription.save();
     }
 
-    // await OrderModel.findOneAndUpdate(
-    //     { paymentId },
-    //     {
-    //         paymentStatus: refund.status === 'processed' ? 'refunded' : 'failed',
-    //         orderStatus: 'cancelled',
-    //         payoutStatus: 'refunded',
-    //         refundId: refund.id
-    //     }
-    // );
 
 
     private async handleRefundEvent(payload: any): Promise<void> {
@@ -564,26 +555,32 @@ export class PaymentController {
             const order = await OrderModel.findOne({ paymentId })
                 .populate('products.productId')
                 .populate('products.productVariantId');
-            console.log("handleRefundEvent function Order", order)
-            const eligibleProductIds = JSON.stringify(refund.notes?.eligibleProductIds || '[]')
 
+
+            console.log("handleRefundEvent function Order", order)
+
+            const eligibleProductsNote = refund.notes?.eligibleProducts || '';
+            const eligibleProductIds = eligibleProductsNote.split(', ').filter(id => id);
+
+
+            console.log("refund.notes", refund.notes)
             console.log("eligibleProductIds", eligibleProductIds)
             const stockUpdates = order.products.
-            filter(product=>eligibleProductIds.includes(product.productId.toString()))
-            .flatMap(product => [
-                {
-                    updateOne: {
-                        filter: { _id: product.productId },
-                        update: { $inc: { stockLeft: product.quantity } }
-                    }
-                },
-                ...(product.productVariantId ? [{
-                    updateOne: {
-                        filter: { _id: product.productVariantId },
-                        update: { $inc: { stockLeft: product.quantity } }
-                    }
-                }] : [])
-            ]);
+                filter(product => eligibleProductIds.includes(product.productId.toString()))
+                .flatMap(product => [
+                    {
+                        updateOne: {
+                            filter: { _id: product.productId },
+                            update: { $inc: { stockLeft: product.quantity } }
+                        }
+                    },
+                    ...(product.productVariantId ? [{
+                        updateOne: {
+                            filter: { _id: product.productVariantId },
+                            update: { $inc: { stockLeft: product.quantity } }
+                        }
+                    }] : [])
+                ]);
 
 
             if (refund.status === 'processed' && stockUpdates.length > 0) {
@@ -593,21 +590,29 @@ export class PaymentController {
                 ]);
             }
 
-
-
             await OrderModel.findByIdAndUpdate(
                 order._id,
                 {
                     refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
                     refundId: refund.id,
                     orderStatus: 'cancelled',
-                    payoutStatus: 'pending'
+                    payoutStatus: 'pending',
+                    $set: {
+                        'products.$[elem].refundStatus': 'processed'
+                    }
+                },
+                {
+                    arrayFilters: [
+                        { 'elem.productId': { $in: eligibleProductIds.map(id => new mongoose.Types.ObjectId(id)) } }
+                    ],
+                    new: true
                 }
-            )
+            );
 
 
 
 
+            ``
 
         }
         else if (payment.modelName === 'UserSubscription') {
