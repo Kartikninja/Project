@@ -21,6 +21,11 @@ import { Server } from 'socket.io';
 import { initializePayoutWorker, initializeShippingWorker } from './workers/payout.worker';
 
 
+import { ExpressAdapter } from '@bull-board/express';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { Queue } from 'bullmq';
+
 export class App {
   // private initializeErrorHandling() {
   //   this.app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -53,7 +58,6 @@ export class App {
     this.app.use(helmet());
     this.connectToDatabase();
     this.initializeMiddlewares();
-    this.initializeRoutes(routes);
     this.initializeSwagger();
     this.initializeErrorHandling();
     this.initializeSocket();
@@ -64,6 +68,9 @@ export class App {
 
     this.initializeBullMQWorker();
 
+
+    this.initializeBullBoard()
+    this.initializeRoutes(routes);
 
   }
 
@@ -77,6 +84,40 @@ export class App {
   }
 
 
+  private async initializeBullBoard() {
+    console.log("Initializing Bull Board...");
+
+    const serverAdapter = new ExpressAdapter();
+    serverAdapter.setBasePath('/admin/queues');
+
+    const payoutQueue = new Queue('payouts', {
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379,
+      },
+    });
+
+    const shipping = new Queue('shipping', {
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379,
+      }
+    })
+
+    createBullBoard({
+      queues: [new BullMQAdapter(payoutQueue), new BullMQAdapter(shipping)],
+      serverAdapter,
+    });
+    this.app._router.stack.forEach(layer => {
+      if (layer.route) {
+        console.log("_router", layer.route.path);
+      }
+    });
+
+    this.app.use('/admin/queues', serverAdapter.getRouter());
+
+    console.log("Bull Board initialized at: http://localhost:" + this.port + "/admin/queues");
+  }
 
   public async listen() {
     await new Promise((resolve, reject) => {
