@@ -30,7 +30,7 @@ export interface CartItem {
 
 export interface DiscountAttributes {
     id: number | null;
-    discount_type: string;
+    discount_type: 'percentage' | 'fixed' | 'none';
     value: number;
     is_active: boolean;
     discountAmount: number;

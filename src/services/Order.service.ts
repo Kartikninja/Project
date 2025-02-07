@@ -95,12 +95,13 @@ class OrderService {
 
                     const appliedDiscount = await this.getApplicableDiscount(cartItem);
                     if (appliedDiscount) {
+                        console.log("appliedDiscount", appliedDiscount)
                         discountAmount = appliedDiscount.discountAmount;
                         discountType = appliedDiscount.discount_type as 'percentage' | 'fixed' | 'none';
                         finalPrice = (currentPrice * quantity) - appliedDiscount.discountAmount;
                     }
                     console.log(`This ${productId} has  discount  ${discountAmount} and this is finalPrice : ${finalPrice}`)
-                    // finalPrice = (currentPrice * quantity) - productDiscount
+                    console.log(`getApplicableDiscount=>This product ${productId} has discountType is ${discountType}`)
                 }
 
                 return { finalPrice, discountAmount, discountType }
@@ -129,6 +130,7 @@ class OrderService {
                 totalPrice += finalPrice
                 console.log(`calculateDiscountedPrice=>   totalPrice  ${totalPrice} and discountedPrice ${discountAmount}`)
 
+                console.log(`calculateDiscountedPrice=>This is product ${productId} DiscountType has ${discountType}`)
 
                 createOrder.push({
                     productId,
@@ -138,9 +140,9 @@ class OrderService {
                     refundPolicy: productData.refundPolicy,
                     replacementPolicy: productData.replacementPolicy,
 
-                    discountedPrice: finalPrice,  // Same as finalPrice (total after discount)
-                    discountAmount: discountAmount, // Total discount applied
-                    discountType: discountType,   // Type of discount applied
+                    discountedPrice: finalPrice,
+                    discountAmount: discountAmount,
+                    discountType: discountType,
 
                 });
 
@@ -341,10 +343,11 @@ class OrderService {
                 eligibleProducts.push(...order.products);
             }
             else if (['shipped', 'out_for_delivery', 'delivered'].includes(order.orderStatus)) {
+                console.log("order.orderStatus", order.orderStatus)
                 for (const product of order.products) {
                     const { shippingStatus, refundPolicy, deliveredAt, quantity, productId, discountedPrice } = product;
-                    const ProductPrice = await Product.findById({ _id: product.productId })
 
+                    console.log("product", product)
                     let isEligible = false
                     if (shippingStatus === 'delivered' || shippingStatus === 'shipped' || shippingStatus === 'out_for_delivery') {
                         if (deliveredAt && this.isEligibleForRefund(refundPolicy, new Date(deliveredAt))) {
@@ -355,7 +358,7 @@ class OrderService {
                     }
                     if (isEligible) {
                         refundAmount += discountedPrice
-                        eligibleProducts.push(productId)
+                        eligibleProducts.push(productId.toString())
                         console.log(`This Product ${product.productId} has refund Amount is :${refundAmount}`)
                     }
 
@@ -363,6 +366,7 @@ class OrderService {
             } else {
                 throw new HttpException(400, 'Order cannot be cancelled in its current status');
             }
+            console.log("refundAmount", refundAmount)
 
             if (refundAmount <= 0) {
                 throw new HttpException(400, 'No eligible products for refund');
@@ -375,7 +379,7 @@ class OrderService {
                 notes: {
                     reason: cancellationReason || 'No reason provided',
                     cancelledBy: userId.toString(),
-                    eligibleProducts: eligibleProducts.map(p => p.productId).join(', ')
+                    eligibleProducts: eligibleProducts.join(', ')
                 }
             });
             console.log('refund', refund)
@@ -396,7 +400,7 @@ class OrderService {
             };
 
             updateData.products = order.products.map(p => {
-                const isEligible = eligibleProducts.some(ep => ep._id.equals(p.productId));
+                const isEligible = eligibleProducts.some(ep => ep.toString() === p.productId.toString());
                 return {
                     ...p,
                     refundStatus: isEligible ? 'approved' : 'rejected',
@@ -566,7 +570,7 @@ class OrderService {
 
                                 discountedPrice: finalItemPrice,
                                 discountAmount: itemDiscount,
-                                discountType: productDiscount.discount_type,
+                                discountType: subCategoryDiscount.discount_type,
                             });
                         }
                     }
@@ -609,7 +613,7 @@ class OrderService {
 
                                     discountedPrice: finalItemPrice,
                                     discountAmount: itemDiscount,
-                                    discountType: productDiscount.discount_type,
+                                    discountType: categoryDiscount.discount_type,
                                 });
                             }
                         }
@@ -640,9 +644,17 @@ class OrderService {
             const subCategoryTotals = calculateTotals(subCategoryDiscounts);
             const categoryTotals = calculateTotals(categoryDiscounts);
 
+            const appliedDiscountType = discountBreakdown.length > 0
+                ? discountBreakdown[0].discountType === Discount_TYPE.PERCENTAGE
+                    ? 'percentage'
+                    : discountBreakdown[0].discountType === Discount_TYPE.FIXED
+                        ? 'fixed'
+                        : 'none'
+                : 'none';
+            console.log("appliedDiscountType", appliedDiscountType)
             return {
                 id: appliedDiscountId,
-                discount_type: 'fixed',
+                discount_type: appliedDiscountType,
                 value: totalDiscount,
                 is_active: true,
                 discountAmount: totalDiscount,
