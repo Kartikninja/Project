@@ -18,6 +18,8 @@ class CategoryRoute {
         this.router.put(`${this.path}/:id`, AuthMiddlewareStore, this.categoryController.updateCategory);
         this.router.delete(`${this.path}/:id`, AuthMiddlewareStore, this.categoryController.deleteCategory);
         this.router.get(`${this.path}/getby/user`, this.categoryController.getAllCategoriesByUserId)
+
+        this.router.get(`${this.path}/get/search`, this.categoryController.searchCategory)
     }
 }
 

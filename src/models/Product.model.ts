@@ -104,6 +104,13 @@ ProductSchema.pre('save', async function (next) {
     next()
 })
 
+ProductSchema.index({ name: "text", description: "text" }, { weights: { name: 10, description: 5 } });
+
+ProductSchema.index({ storeId: 1, subCategoryId: 1, price: 1 });
+ProductSchema.index({ storeId: 1, createdAt: -1 });
+
+ProductSchema.index({ createdAt: -1 });
+ProductSchema.index({ stockLeft: 1 });
 
 export const Product = model<ProductInterface & Document>('Product', ProductSchema, 'Products');
 

@@ -62,5 +62,17 @@ export class ProductVariantController {
             next(error);
         }
     };
+
+
+
+    public searchProductVariant = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+
+            const result = await this.productVariantService.searchProductVariant(req.query);
+            res.status(200).json({ message: 'Product variant deleted successfully',success:true,data:result });
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 

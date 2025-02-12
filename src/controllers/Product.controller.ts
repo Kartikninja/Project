@@ -54,7 +54,7 @@ class ProductController {
             const storeId = req.store._id
             const { id } = req.params;
             const productData = req.body;
-            const updatedProduct = await this.productService.updateProduct(storeId,id, productData);
+            const updatedProduct = await this.productService.updateProduct(storeId, id, productData);
             res.status(200).json({ data: updatedProduct, message: 'Product updated successfully' });
         } catch (error) {
             next(error);
@@ -71,6 +71,18 @@ class ProductController {
             next(error);
         }
     };
+
+
+    public searchProduct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.productService.searchProduct(req.query)
+            res.status(200).json({ success: true, message: 'Product Recived successfull', data: result })
+        } catch (err) {
+            next(err)
+        }
+    }
+
+
 }
 
 export default ProductController;

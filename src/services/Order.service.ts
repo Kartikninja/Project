@@ -334,7 +334,9 @@ class OrderService {
             if (order.orderStatus === 'cancelled') {
                 throw new HttpException(400, 'Order already cancelled');
             }
-
+            if (order.payoutStatus !== 'pending') {
+                throw new HttpException(400, 'product is not refundable');
+            }
             let refundAmount = 0;
             const eligibleProducts: any[] = [];
             const now = new Date();
@@ -345,7 +347,7 @@ class OrderService {
             else if (['shipped', 'out_for_delivery', 'delivered'].includes(order.orderStatus)) {
                 console.log("order.orderStatus", order.orderStatus)
                 for (const product of order.products) {
-                    const { shippingStatus, refundPolicy, deliveredAt, quantity, productId, discountedPrice } = product;
+                    const { shippingStatus, refundPolicy, deliveredAt, productId, discountedPrice } = product;
 
                     console.log("product", product)
                     let isEligible = false

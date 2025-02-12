@@ -62,4 +62,7 @@ const ProductVariantSchema: Schema = new Schema(
     }
 );
 
+
+
+
 export const ProductVariant = model<ProductVariantInterface & Document>('ProductVariant', ProductVariantSchema, 'ProductVariants');

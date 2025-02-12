@@ -25,4 +25,8 @@ const CategorySchema: Schema = new Schema(
     { timestamps: true }
 );
 
+
+CategorySchema.index({ name: "text", description: 'text' })
+CategorySchema.index({ storeId: 1 })
+
 export const Category = model<Document & CategoryInterface>('Category', CategorySchema, 'Categories');

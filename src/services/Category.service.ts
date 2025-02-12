@@ -3,6 +3,8 @@ import { CategoryInterface } from '@interfaces/Category.interface';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/httpException';
 import { StoreModel } from '@/models/Store.model';
+import { redisClient } from '@/utils/redisClient';
+import { FilterQuery } from 'mongoose';
 
 
 @Service()
@@ -21,7 +23,18 @@ export class CategoryService {
     }
 
     public async getAllCategories(): Promise<CategoryInterface[]> {
+        const cacheKey = 'categories:all';
+
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            console.log('Cache hit ✅');
+            return JSON.parse(cachedData);
+        }
+        console.log('Cache miss ❌. Fetching from MongoDB...');
+
         const categories = await Category.find();
+        await redisClient.set(cacheKey, JSON.stringify(categories), 'EX', 600);
+
         return categories;
     }
 
@@ -61,6 +74,13 @@ export class CategoryService {
 
 
     public async getAllCategoriesGroupedByUserId(): Promise<any> {
+        const cacheKey = 'categories:grouped';
+
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            console.log('Cache hit ✅');
+            return JSON.parse(cachedData);
+        }
         const categories = await Category.aggregate([
             {
                 $group: {
@@ -100,8 +120,63 @@ export class CategoryService {
                 },
             },
         ]);
+        await redisClient.set(cacheKey, JSON.stringify(categories), 'EX', 600);
 
         return categories;
     }
+
+    public async searchCategory(queryParams: any) {
+        const { search, storeId, minPrice, maxPrice, sortBy, sortOrder, page = 1, limit = 10 } = queryParams;
+        let filter: FilterQuery<typeof Category> = {}
+
+        console.log("queryParams", queryParams)
+
+        if (search) {
+            filter.$text = { $search: search }
+        }
+        if (storeId) filter.storeId = storeId
+        if (minPrice || maxPrice) {
+            filter.price = {}
+            if (minPrice) filter.price.$gte = minPrice
+            if (maxPrice) filter.price.$lte = maxPrice
+        }
+        let sortOptions: any = {}
+        if (sortBy) {
+            sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1
+        } else {
+            sortOptions.createdAt = -1
+        }
+        const skip = (page - 1) * limit
+
+
+
+        const cacheKey = `categories:search:${JSON.stringify(queryParams)}`;
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+            console.log('Cache hit ✅');
+
+            return JSON.parse(cachedData);
+
+        }
+
+        const categories = await Category.find(filter)
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(Number(limit));
+
+        const totalCount = await Category.countDocuments(filter);
+        const responseData = {
+            categories,
+            totalCount,
+            currentPage: page,
+            totalPage: Math.ceil(totalCount / limit),
+        };
+        await redisClient.set(cacheKey, JSON.stringify(responseData), 'EX', 3600)
+
+        return responseData
+
+
+    }
+
 
 }
