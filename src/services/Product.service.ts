@@ -144,7 +144,7 @@ class ProductService {
         if (search) {
             filter.$text = { $search: search }
         }
-        if (subCategoryId) filter.sabCategoryId = subCategoryId
+        if (subCategoryId) filter.subCategoryId = subCategoryId
         if (storeId) filter.storeId = storeId
 
         if (minPrice || maxPrice) {

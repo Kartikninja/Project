@@ -6,6 +6,8 @@ import { SubCategory } from '@models/SubCategory.model';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/httpException';
 import { StoreModel } from '@/models/Store.model';
+import { FilterQuery } from 'mongoose';
+import { redisClient } from '@/utils/redisClient';
 
 
 @Service()
@@ -199,6 +201,60 @@ export class ProductVariantService {
             throw new HttpException(404, 'Product Variant not found')
         }
         return deleteProductVariant;
+    }
+
+
+    public async searchProductVariant(queryParams: any) {
+
+        const { search, subCategoryId, productId, storeId, minPrice, maxPrice, sortBy, sortOrder, page = 1, limit = 10 } = queryParams;
+        let filter: FilterQuery<typeof ProductVariant> = {}
+        if (search) {
+            filter.$text = { $search: search }
+        }
+        if (productId) filter.productId = productId
+
+        if (subCategoryId) filter.subCategoryId = subCategoryId
+        if (storeId) filter.storeId = storeId
+
+        if (minPrice || maxPrice) {
+            filter.price = {}
+            if (minPrice) filter.price.$gte = minPrice
+            if (maxPrice) filter.price.$lte = maxPrice
+
+        }
+
+        let sortOptions: any = {}
+        if (sortBy) {
+            sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1
+        } else {
+            sortOptions.createdAt = -1
+        }
+
+        const skip = (page - 1) * limit
+
+        const catchKey = `search:${JSON.stringify(queryParams)}`
+        const cachedData = await redisClient.get(catchKey)
+        if (cachedData) {
+            console.log("Data is catch from redis")
+            return JSON.parse(cachedData)
+        }
+        console.log('Cache miss. Fetching from MongoDB...');
+
+        const productVariant = await ProductVariant.find(filter)
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(Number(limit))
+
+        const totalCount = await ProductVariant.countDocuments(filter)
+
+        const result = {
+            productVariant,
+            totalCount,
+            currentPage: page,
+            totalPage: Math.ceil(totalCount / limit)
+        }
+        await redisClient.set(catchKey, JSON.stringify(result), 'EX', 3600)
+        return result
     }
 }
 
