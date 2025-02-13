@@ -112,15 +112,17 @@ class OrderService {
                 const { productId, productVariantId, quantity } = product;
 
 
-                const productData = await Product.findById(productId);
-                if (!productData) throw new HttpException(404, 'This Product is not found');
-                if (productData.stockLeft <= 0) throw new HttpException(404, `${productData.name} is not avalible for this time`)
+                const productData = await ProductVariant.findById(productVariantId).populate('productId');;
+                if (!productData) throw new HttpException(404, 'This Product Varinat  is not found');
+                if (productData.stockLeft <= 0) throw new HttpException(404, `${productData.variantName} is not avalible for this time`)
                 const productVariant = await ProductVariant.findOne({ _id: productVariantId, productId });
                 if (!productVariant) throw new HttpException(404, 'This Product Variant is not found');
                 if (productVariant.stockLeft <= 0) throw new HttpException(404, `this ${productVariant._id} is not avalible for this time `)
 
+                const subCategoriesId = await Product.findById(productData.productId)
 
-                const subCategory = await SubCategory.findById(productData.subCategoryId);
+
+                const subCategory = await SubCategory.findById(subCategoriesId.subCategoryId);
                 const variantPrice = productVariant.price || 0;
 
 
@@ -137,8 +139,8 @@ class OrderService {
                     productVariantId,
                     quantity,
                     finalPrice: finalPrice,
-                    refundPolicy: productData.refundPolicy,
-                    replacementPolicy: productData.replacementPolicy,
+                    refundPolicy: subCategoriesId.refundPolicy,
+                    replacementPolicy: subCategoriesId.replacementPolicy,
 
                     discountedPrice: finalPrice,
                     discountAmount: discountAmount,
@@ -231,7 +233,9 @@ class OrderService {
 
                     return {
                         ...product,
-                        name: productData.name || 'Unknown Product',
+                        ProductName: productData.name || 'Unknown Product',
+                        variantName: productVariant.variantName,
+                        price: productVariant.price,
                         imageUrl: productVariant.images || productData.images || 'default-image-url.jpg',
 
                     };
@@ -249,11 +253,13 @@ class OrderService {
                 customerName: user.fullName || 'Valued Customer',
                 email: user.email,
                 products: populatedProducts.map(product => ({
-                    productName: product.name,
+                    productName: product.ProductName,
                     productImage: product.imageUrl,
+                    variantName: product.variantName,
                     price: product.finalPrice,
                     quantity: product.quantity
                 })),
+
                 orderId: payment.orderId,
                 subject: 'Your Purchase Details',
                 order_Id,
@@ -325,6 +331,10 @@ class OrderService {
     }
 
 
+    // for real-time app
+    // if (order.payoutStatus !== 'pending') {
+    //     throw new HttpException(400, 'product is not refundable');
+    // }
 
     public async cancelOrder(id: string, userId: string, cancellationReason?: string): Promise<any> {
         try {
@@ -334,9 +344,7 @@ class OrderService {
             if (order.orderStatus === 'cancelled') {
                 throw new HttpException(400, 'Order already cancelled');
             }
-            if (order.payoutStatus !== 'pending') {
-                throw new HttpException(400, 'product is not refundable');
-            }
+
             let refundAmount = 0;
             const eligibleProducts: any[] = [];
             const now = new Date();
@@ -354,6 +362,7 @@ class OrderService {
                     if (shippingStatus === 'delivered' || shippingStatus === 'shipped' || shippingStatus === 'out_for_delivery') {
                         if (deliveredAt && this.isEligibleForRefund(refundPolicy, new Date(deliveredAt))) {
                             isEligible = true
+                            console.log("isEligible", isEligible)
                         }
                     } else {
                         isEligible = true
@@ -405,7 +414,7 @@ class OrderService {
                 const isEligible = eligibleProducts.some(ep => ep.toString() === p.productId.toString());
                 return {
                     ...p,
-                    refundStatus: isEligible ? 'approved' : 'rejected',
+                    refundStatus: isEligible ? 'requested' : 'rejected',
                     cancellationStatus: isEligible ? 'approved' : 'rejected'
                 };
             });
@@ -925,11 +934,12 @@ class OrderService {
                     }).lean();
                     if (!productVariant) throw new HttpException(404, 'Product Variant not found');
                     console.log('Fetched Product Variant:', productVariant);
-                    const finalPrice = productVariant.price || productData.price;
+                    const finalPrice = productVariant.price
                     console.log("finalPrice", finalPrice)
                     return {
                         ...product,
                         name: productData.name || 'Unknown Product',
+                        varinatName: productVariant.variantName,
                         imageUrl: productVariant.images || productData.images || 'default-image-url.jpg',
                         finalPrice: finalPrice * product.quantity || 0,
                     };
@@ -950,7 +960,8 @@ class OrderService {
                 productName: product.name,
                 productImage: product.imageUrl,
                 price: product.finalPrice,
-                quantity: product.quantity
+                quantity: product.quantity,
+                varinatName: product.variantName
             })),
             orderId: order.orderId,
             subject: 'Your Updated Purchase Details',

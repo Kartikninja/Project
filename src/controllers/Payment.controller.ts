@@ -325,14 +325,14 @@ export class PaymentController {
                     purpose: 'payout',
                     DatabaseOrderId: updatedOrder._id
                 });
-                const productStockUpdates = updatedOrder.products.map(product => ({
+                // const productStockUpdates = updatedOrder.products.map(product => ({
 
-                    updateOne: {
-                        filter: { _id: product.productId },
-                        update: { $inc: { stockLeft: -product.quantity } }
+                //     updateOne: {
+                //         filter: { _id: product.productId },
+                //         update: { $inc: { stockLeft: -product.quantity } }
 
-                    }
-                }))
+                //     }
+                // }))
                 const variantStockUpdates = updatedOrder.products.filter(product => product.productVariantId)
                     .map(product => ({
                         updateOne: {
@@ -341,9 +341,9 @@ export class PaymentController {
                         }
                     }))
 
-                if (productStockUpdates.length) {
-                    await Product.bulkWrite(productStockUpdates)
-                }
+                // if (productStockUpdates.length) {
+                //     await Product.bulkWrite(productStockUpdates)
+                // }
                 if (variantStockUpdates.length) {
                     await ProductVariant.bulkWrite(variantStockUpdates)
                 }
@@ -550,6 +550,25 @@ export class PaymentController {
 
             console.log("refund.notes", refund.notes)
             console.log("eligibleProductIds", eligibleProductIds)
+
+            if (refund.status === 'processed') {
+                await OrderModel.updateOne(
+                    { _id: order._id },
+                    {
+                        $set: {
+                            'products.$[elem].refundStatus': 'processed'
+                        }
+                    },
+                    {
+                        arrayFilters: [
+                            { 'elem.productId': { $in: eligibleProductIds.map(id => new mongoose.Types.ObjectId(id)) } }
+                        ],
+                        new: true
+                    }
+                )
+                console.log("Change in products in product refund Status")
+
+            }
             const stockUpdates = order.products.
                 filter(product => eligibleProductIds.includes(product.productId.toString()))
                 .flatMap(product => [
@@ -581,23 +600,14 @@ export class PaymentController {
                     refundStatus: refund.status === 'processed' ? 'refunded' : 'failed',
                     refundId: refund.id,
                     orderStatus: 'cancelled',
-                    payoutStatus: 'pending',
-                    $set: {
-                        'products.$[elem].refundStatus': 'processed'
-                    }
+                    payoutStatus: 'pending'
                 },
-                {
-                    arrayFilters: [
-                        { 'elem.productId': { $in: eligibleProductIds.map(id => new mongoose.Types.ObjectId(id)) } }
-                    ],
-                    new: true
-                }
+                { new: true }
             );
 
 
 
 
-            ``
 
         }
         else if (payment.modelName === 'UserSubscription') {

@@ -49,11 +49,12 @@
                                                         <strong>
                                                             <%= product.productName %>
                                                         </strong><br>
-                                                        Quantity: <%= product.quantity %><br>
-                                                            Price: $<%= product.price %><br>
-                                                                <img src="<%= product.productImage %>"
-                                                                    alt="<%= product.productName %>"
-                                                                    style="width: 100px; height: auto;">
+                                                        Variant:<%= product.variantName || 'Default Varinat' %> <br>
+                                                            Quantity: <%= product.quantity %><br>
+                                                                Price: $<%= product.price %><br>
+                                                                    <img src="<%= product.productImage %>"
+                                                                        alt="<%= product.productName %>"
+                                                                        style="width: 100px; height: auto;">
                                                     </li>
                                                     <% }); %>
                                             </ul>

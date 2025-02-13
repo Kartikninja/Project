@@ -44,6 +44,8 @@
             display: flex;
             align-items: center;
             margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
         }
 
         .product-list img {
@@ -87,6 +89,9 @@
                         <div class="details">
                             <p><strong>
                                     <%= product.productName %>
+                                </strong></p>
+                            <p>Variant: <strong>
+                                    <%= product.variantName %>
                                 </strong></p>
                             <p>Price: $<%= product.price %>
                             </p>

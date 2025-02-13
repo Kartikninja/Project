@@ -118,6 +118,7 @@ export const sendPurchaseEmail = async (orderDetails: any) => {
       productImage: product.imageUrl,
       price: product.price,
       quantity: product.quantity,
+      variantName: product.variantName
     })),
     mailTitle: 'Thank you for your purchase!',
     appName,
@@ -213,6 +214,7 @@ export const sendOrderUpdateEmail = async (emailData: any) => {
     shippingAddress: emailData.updatedFields?.shippingAddress || 'N/A',
     updatedFields: emailData.updatedFields || {},
     mailTitle: 'Order Update Notification',
+    variantName: emailData.variantName,
     appName,
     year,
   };
