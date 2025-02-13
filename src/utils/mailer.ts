@@ -214,6 +214,7 @@ export const sendOrderUpdateEmail = async (emailData: any) => {
     shippingAddress: emailData.updatedFields?.shippingAddress || 'N/A',
     updatedFields: emailData.updatedFields || {},
     mailTitle: 'Order Update Notification',
+    variantName: emailData.variantName,
     appName,
     year,
   };

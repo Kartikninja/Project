@@ -934,11 +934,12 @@ class OrderService {
                     }).lean();
                     if (!productVariant) throw new HttpException(404, 'Product Variant not found');
                     console.log('Fetched Product Variant:', productVariant);
-                    const finalPrice = productVariant.price || productData.price;
+                    const finalPrice = productVariant.price
                     console.log("finalPrice", finalPrice)
                     return {
                         ...product,
                         name: productData.name || 'Unknown Product',
+                        varinatName: productVariant.variantName,
                         imageUrl: productVariant.images || productData.images || 'default-image-url.jpg',
                         finalPrice: finalPrice * product.quantity || 0,
                     };
@@ -959,7 +960,8 @@ class OrderService {
                 productName: product.name,
                 productImage: product.imageUrl,
                 price: product.finalPrice,
-                quantity: product.quantity
+                quantity: product.quantity,
+                varinatName: product.variantName
             })),
             orderId: order.orderId,
             subject: 'Your Updated Purchase Details',
