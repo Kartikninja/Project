@@ -118,6 +118,7 @@ export const sendPurchaseEmail = async (orderDetails: any) => {
       productImage: product.imageUrl,
       price: product.price,
       quantity: product.quantity,
+      variantName: product.variantName
     })),
     mailTitle: 'Thank you for your purchase!',
     appName,

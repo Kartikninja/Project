@@ -24,10 +24,15 @@ class ProductService {
             throw new HttpException(400, 'Invalid subCategoryId')
         }
 
-        const checkName = await Product.find({ name: productData.name })
+        const checkName = await Product.find({ name: { $regex: new RegExp(`^${productData.name}$`, 'i') }, storeId: storeId })
         if (checkName.length > 0) {
             throw new HttpException(400, 'Product name already exists');
         }
+
+        if (!productData.hasVariants && !productData.basePrice) {
+            throw new HttpException(400, 'Base price is required for non variant products')
+        }
+
         const newProduct = await Product.create({ ...productData, storeId });
         return newProduct;
     }
@@ -116,9 +121,6 @@ class ProductService {
 
         product.name = productData.name || product.name;
         product.description = productData.description || product.description;
-        product.price = productData.price || product.price;
-        product.stockQuantity = productData.stockQuantity || product.stockQuantity;
-        product.stockLeft = productData.stockLeft || product.stockLeft;
         product.images = productData.images || product.images;
         product.subCategoryId = productData.subCategoryId || product.subCategoryId;
         product.updatedAt = new Date();

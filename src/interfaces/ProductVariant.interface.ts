@@ -8,11 +8,8 @@ export default interface ProductVariantInterface extends Document {
     images: string[];
     createdAt: Date;
     updatedAt: Date;
-    attributes: {
-        size?: string;
-        color?: string
-        material?: string;
-    };
+    attributes?: Record<string, string>
     userId: string;
-    storeId: string
+    storeId: string;
+    variantName: string
 }

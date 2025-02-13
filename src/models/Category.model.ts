@@ -27,6 +27,6 @@ const CategorySchema: Schema = new Schema(
 
 
 CategorySchema.index({ name: "text", description: 'text' })
-CategorySchema.index({ storeId: 1 })
+CategorySchema.index({ storeId: 1, name: 'text' })
 
 export const Category = model<Document & CategoryInterface>('Category', CategorySchema, 'Categories');

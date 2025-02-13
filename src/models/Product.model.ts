@@ -4,6 +4,7 @@ import { model, Schema, Document } from 'mongoose'
 import ProductInterface from '@interfaces/Product.interface'
 import { SubCategory } from './SubCategory.model';
 import { Category } from './Category.model';
+import { ProductVariant } from './ProductVariant.model';
 
 const ProductSchema: Schema = new Schema(
     {
@@ -16,20 +17,25 @@ const ProductSchema: Schema = new Schema(
             type: String,
             required: true
         },
-        price: {
+        basePrice: {
             type: Number,
-            required: true
+            required: false
+        },
+
+        hasVariants: {
+            type: Boolean,
+            default: false
         },
         stockQuantity: {
             type: Number,
-            required: true,
-            default: 0
+            required: function () { return !this.hasVariants },
+            default: null
         },
         stockLeft: {
             type: Number,
             required: false,
             default: function () {
-                return this.stockQuantity
+                return this.stockQuantity;
             }
         },
         images: [{
@@ -67,50 +73,45 @@ const ProductSchema: Schema = new Schema(
     }
 );
 
-
-
 ProductSchema.pre('save', async function (next) {
-    if (!this.refundPolicy || !this.replacementPolicy) {
-        try {
+    try {
+        if (this.hasVariants) {
+            const variants = await ProductVariant.find({ productId: this._id }).sort({ price: 1 });
+            if (variants.length > 0) {
+                this.basePrice = variants[0].price;
+            }
+        }
 
-
-            const subCategory = await SubCategory.findById(this.subCategoryId)
+        if (!this.refundPolicy || !this.replacementPolicy) {
+            const subCategory = await SubCategory.findById(this.subCategoryId).populate('categoryId');
             if (subCategory) {
-                if (!this.refundPolicy) {
-
-                    this.refundPolicy = subCategory.refundPolicy
-                }
-                if (!this.replacementPolicy) {
-                    this.replacementPolicy = subCategory.replacementPolicy;
-                }
+                this.refundPolicy = this.refundPolicy || subCategory.refundPolicy;
+                this.replacementPolicy = this.replacementPolicy || subCategory.replacementPolicy;
             }
 
             if (!this.refundPolicy || !this.replacementPolicy) {
-                const category = await Category.findById(subCategory.categoryId);
+                const category = await Category.findById(subCategory?.categoryId);
                 if (category) {
-                    if (!this.refundPolicy) {
-                        this.refundPolicy = category.refundPolicy;
-                    }
-                    if (!this.replacementPolicy) {
-                        this.replacementPolicy = category.replacementPolicy;
-                    }
+                    this.refundPolicy = this.refundPolicy || category.refundPolicy;
+                    this.replacementPolicy = this.replacementPolicy || category.replacementPolicy;
                 }
             }
-        } catch (err) {
-            console.error('Error setting default policies:', err);
-
         }
+    } catch (err) {
+        console.error('Error setting default policies:', err);
     }
-    next()
-})
+    next();
+});
+
+
 
 ProductSchema.index({ name: "text", description: "text" }, { weights: { name: 10, description: 5 } });
 
-ProductSchema.index({ storeId: 1, subCategoryId: 1, price: 1 });
+ProductSchema.index({ storeId: 1, subCategoryId: 1, basePrice: 1 });
 ProductSchema.index({ storeId: 1, createdAt: -1 });
 
 ProductSchema.index({ createdAt: -1 });
-ProductSchema.index({ stockLeft: 1 });
+
 
 export const Product = model<ProductInterface & Document>('Product', ProductSchema, 'Products');
 

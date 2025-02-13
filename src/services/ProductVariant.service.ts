@@ -14,15 +14,12 @@ import { redisClient } from '@/utils/redisClient';
 export class ProductVariantService {
     public async createProductVariant(storeId: string, productVariantData: any) {
         const { productId, attributes } = productVariantData
-        if (!attributes || (!attributes.size && !attributes.color && !attributes.material)) {
-            throw new HttpException(400, 'At least one of size, color, or material must be provided');
+        if (!attributes || Object.keys(attributes).length === 0) {
+            throw new HttpException(400, 'At least one of attributes must be provided');
         }
-        const checkName = await ProductVariant.findOne({
-            productId, 'attributes.size': attributes.size, 'attributes.color': attributes.color, 'attributes.material': attributes.material
-        })
-        if (checkName) {
-            throw new HttpException(400, 'This Variant already exists');
-        }
+
+
+
 
         const checkProduct = await Product.findOne({ _id: productVariantData.productId, storeId: storeId })
         if (!checkProduct) {
@@ -34,7 +31,29 @@ export class ProductVariantService {
             throw new HttpException(404, 'Store not found')
         }
 
+        const query: any = { productId }
+        Object.keys(attributes).forEach(key => {
+            query[`attributes.${key}`] = attributes[key]
+        })
+
+
+
+        const existingProductVarinat = await ProductVariant.findOne({ ...query, variantName: productVariantData.variantName })
+        if (existingProductVarinat) {
+            throw new HttpException(400, 'Product variant already exists')
+        }
+
+
         const newProductVariant = await ProductVariant.create({ ...productVariantData, storeId });
+
+        if (!checkProduct.hasVariants) {
+            await Product.updateOne({ _id: productId }, { hasVariants: true });
+        }
+        const variants = await ProductVariant.find({ productId }).sort({ price: 1 });
+        if (variants.length > 0) {
+            await Product.updateOne({ _id: productId }, { basePrice: variants[0].price });
+        }
+
         return newProductVariant;
     }
 
@@ -177,17 +196,17 @@ export class ProductVariantService {
         productVariant.stockLeft = productVariantData.stockLeft || productVariant.stockLeft;
         productVariant.images = productVariantData.images || productVariant.images;
 
-        if (productVariantData.attributes) {
-            if (productVariantData.attributes.size) {
-                productVariant.attributes.size = productVariantData.attributes.size;
-            }
-            if (productVariantData.attributes.color) {
-                productVariant.attributes.color = productVariantData.attributes.color;
-            }
-            if (productVariantData.attributes.material) {
-                productVariant.attributes.material = productVariantData.attributes.material;
-            }
-        }
+        // if (productVariantData.attributes) {
+        //     if (productVariantData.attributes.size) {
+        //         productVariant.attributes.size = productVariantData.attributes.size;
+        //     }
+        //     if (productVariantData.attributes.color) {
+        //         productVariant.attributes.color = productVariantData.attributes.color;
+        //     }
+        //     if (productVariantData.attributes.material) {
+        //         productVariant.attributes.material = productVariantData.attributes.material;
+        //     }
+        // }
         productVariant.updatedAt = new Date();
         await productVariant.save();
 
@@ -195,18 +214,28 @@ export class ProductVariantService {
 
     }
 
-    public async deleteProductVariant(storeId: string, id: string) {
-        const deleteProductVariant = await ProductVariant.findByIdAndDelete({ _id: id, storeId: storeId });
-        if (!deleteProductVariant) {
-            throw new HttpException(404, 'Product Variant not found')
+    public async deleteProductVariant(variantId: string, storeId: string) {
+        const variant = await ProductVariant.findByIdAndDelete({ _id: variantId, storeId: storeId });
+        if (variant) {
+            const remainingVariants = await ProductVariant.countDocuments({ productId: variant.productId });
+            if (remainingVariants === 0) {
+                await Product.updateOne({ _id: variant.productId }, { hasVariants: false });
+            }
         }
-        return deleteProductVariant;
     }
 
 
     public async searchProductVariant(queryParams: any) {
+        const { attributes, search, subCategoryId, productId, storeId, minPrice, maxPrice, sortBy, sortOrder } = queryParams;
+        const page = Number(queryParams.page) || 1;
+        const limit = Number(queryParams.limit) || 10;
 
-        const { search, subCategoryId, productId, storeId, minPrice, maxPrice, sortBy, sortOrder, page = 1, limit = 10 } = queryParams;
+        if (attributes) {
+            Object.entries(JSON.parse(attributes).forEach(([key, value]) => {
+                filter[`attributes.${key}`] = value
+            }))
+        }
+
         let filter: FilterQuery<typeof ProductVariant> = {}
         if (search) {
             filter.$text = { $search: search }
@@ -241,6 +270,7 @@ export class ProductVariantService {
         console.log('Cache miss. Fetching from MongoDB...');
 
         const productVariant = await ProductVariant.find(filter)
+            .hint({ 'attributes.$**': 1 })
             .sort(sortOptions)
             .skip(skip)
             .limit(Number(limit))
