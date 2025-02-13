@@ -113,7 +113,7 @@ class OrderService {
 
 
                 const productData = await ProductVariant.findById(productVariantId).populate('productId');;
-                if (!productData) throw new HttpException(404, 'This Product is not found');
+                if (!productData) throw new HttpException(404, 'This Product Varinat  is not found');
                 if (productData.stockLeft <= 0) throw new HttpException(404, `${productData.variantName} is not avalible for this time`)
                 const productVariant = await ProductVariant.findOne({ _id: productVariantId, productId });
                 if (!productVariant) throw new HttpException(404, 'This Product Variant is not found');
