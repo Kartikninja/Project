@@ -2,7 +2,8 @@ import { HttpException } from "@/exceptions/httpException";
 import { Subscription } from "@/interfaces/Subscription.interface";
 import { SubscriptionModel } from "@/models/Subscription.model";
 import Razorpay from "razorpay";
-import { Service } from "typedi";
+import Container, { Service } from "typedi";
+import { NotificationService } from "./Notification.service";
 
 
 
@@ -14,7 +15,7 @@ const razorpay = new Razorpay({
 @Service()
 export class SubscriptionService {
 
-
+    public notificationService = Container.get(NotificationService)
     public async getAll() {
         const SubAll = await SubscriptionModel.find({ isActive: true })
         return SubAll
@@ -50,6 +51,17 @@ export class SubscriptionService {
 
         const newSubscription = await SubscriptionModel.create(SubscriptionData)
         await newSubscription.save()
+
+        await this.notificationService.sendNotification({
+            modelName: "Subscription",
+            subScriptionId: newSubscription._id.toString(),
+            createdBy: 'Admin',
+            type: 'SubScription-Created',
+            metadata: { type: newSubscription.type }
+
+
+        })
+
         return newSubscription;
     }
 
@@ -65,13 +77,22 @@ export class SubscriptionService {
     }
 
     public async delete(id: string) {
-        console.log(id)
+
         const subscription = await SubscriptionModel.findById(id)
-        console.log(subscription)
+
         if (!subscription) {
             throw new HttpException(404, `Subscription with id ${id} not found`)
         }
         await subscription.deleteOne()
+        await this.notificationService.sendNotification({
+            modelName: "Subscription",
+            subScriptionId: subscription._id.toString(),
+            createdBy: 'Admin',
+            type: 'SubScription-Deleted',
+            metadata: { type: subscription.type }
+
+
+        })
         return subscription
     }
 

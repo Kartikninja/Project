@@ -52,7 +52,7 @@ const NotificationSchema: Schema = new Schema(
         },
         type: {
             type: String,
-            enum: ['User-Buy-subscription', 'user-registered', 'user-login', 'admin-notification', 'new-order', 'order-updated', 'User-Forgot-password', "User-Reset-password", 'User-Update-Profile', "Delete-User"],
+            enum: ['Create-Store', 'user-logout', 'Update-order-status', 'User-Buy-subscription', 'user-registered', 'user-login', 'admin-notification', 'new-order', 'order-updated', 'User-Forgot-password', "User-Reset-password", 'User-Update-Profile', "Delete-User", "Order-delete"],
             default: 'info',
         },
         isRead: {

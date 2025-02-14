@@ -180,45 +180,15 @@ class OrderService {
 
 
 
-            const io = this.notification.getIO()
-            if (io) {
-                try {
-                    io.to(`store_${storeId}`).emit('Create-Order', {
-                        modelName: 'Order',
-                        orderId: order._id,
-                        message: `New order from ${user.fullName}`,
-                        type: 'new-order',
-                        createdBy: 'User',
-                        storeId: order.storeId,
-                        userId: order.userId
-                    });
+            await this.notification.sendNotification({
+                modelName: 'Order',
+                type: 'new-order',
+                userId: order.userId.toString(),
+                storeId: order.storeId.toString(),
+                createdBy: 'User',
+                orderId: order._id.toString()
+            })
 
-                    console.log(`Notification sent to store ${storeId}`);
-                    io.to('order-admin-room').emit('notification', {
-                        modelName: 'Order',
-                        orderId: order._id,
-                        message: `New order received from ${user.fullName} for store ${store.storeName}`,
-                        type: 'new-order',
-                        createdBy: 'User',
-                        userId: order.userId,
-                        storeId: order.storeId
-
-                    });
-                    console.log('Notification sent to admin-room');
-
-                } catch (error) {
-                    console.error('Error emitting notification:', error);
-                }
-            }
-            await this.notification.sendAdminNotification(
-                'Order',
-                `New order from ${user.fullName}`,
-                'new-order',
-                'User',
-                userId,
-                storeId,
-                order.id
-            );
 
             const populatedProducts = await Promise.all(
                 createOrder.map(async (product) => {
@@ -419,6 +389,14 @@ class OrderService {
                 };
             });
 
+            await this.notification.sendNotification({
+                modelName: 'Order',
+                type: 'order-cancelled',
+                userId: order.userId.toString(),
+                storeId: order.storeId.toString(),
+                createdBy: 'User',
+                orderId: order._id.toString()
+            })
             const updatedOrder = await OrderModel.findByIdAndUpdate(id, updateData, { new: true });
 
             return {
@@ -479,6 +457,14 @@ class OrderService {
 
     public async deleteOrder(orderId: string): Promise<void> {
         const result = await OrderModel.findByIdAndDelete(orderId);
+        await this.notification.sendNotification({
+            modelName: 'Order',
+            type: 'Order-delete',
+            userId: result.userId.toString(),
+            storeId: result.storeId.toString(),
+            createdBy: 'User',
+            orderId: result._id.toString()
+        })
         if (!result) throw new Error('Order not found or already deleted');
     }
 
@@ -880,44 +866,14 @@ class OrderService {
 
         console.log("Order Successfully Updated:", order);
 
-        const io = await this.notification.getIO()
-        if (io) {
-            try {
-                io.to(`store_${storeId}`).emit('Update-Order', {
-                    modelName: 'Order',
-                    orderId: order._id,
-                    message: `Order updated by ${userId}`,
-                    type: 'update-order',
-                    createdBy: 'User',
-                    storeId: order.storeId,
-                    userId: order.userId
-                });
-
-                console.log(`Notification sent to store ${storeId}`);
-                io.to('order-admin-room').emit('notification', {
-                    modelName: 'Order',
-                    orderId: order._id,
-                    message: `Order updated for store ${storeId}`,
-                    type: 'update-order',
-                    createdBy: 'User',
-                    userId: order.userId,
-                    storeId: order.storeId,
-                });
-                console.log('Notification sent to admin-room');
-            } catch (err) {
-                console.error('Error emitting notification:', err);
-
-            }
-        }
-        await this.notification.sendAdminNotification(
-            'Order',
-            `Update order from ${user.fullName}`,
-            'order-updated',
-            'User',
-            userId,
-            storeId.toString(),
-            order.id
-        );
+        await this.notification.sendNotification({
+            modelName: 'Order',
+            type: 'order-updated',
+            userId: order.userId.toString(),
+            storeId: order.storeId.toString(),
+            createdBy: 'User',
+            orderId: order._id.toString()
+        })
         const populatedProducts = await Promise.all(
             updatedProducts.map(async (product) => {
                 console.log('Product:', product);
@@ -997,27 +953,14 @@ class OrderService {
         const user = await UserModel.findById(order.userId);
 
         if (user && store) {
-            const io = this.notification.getIO();
-            if (io) {
-                io.to(`store_${order.storeId}`).emit('Order-Status-Update', {
-                    orderId: order._id,
-                    status,
-                    message: `Order ${order.orderId} status updated to ${status}`,
-                    type: 'order-status-update',
-                    storeId: order.storeId,
-                    userId: order.userId
-                });
-
-                io.to('order-admin-room').emit('notification', {
-                    orderId: order._id,
-                    status,
-                    message: `Order ${order.orderId} status updated to ${status}`,
-                    type: 'order-status-update',
-                    storeId: order.storeId,
-                    userId: order.userId
-                });
-            }
-
+            await this.notification.sendNotification({
+                modelName: 'Order',
+                type: 'Update-order-status',
+                userId: order.userId.toString(),
+                storeId: order.storeId.toString(),
+                createdBy: 'StoreOwner',
+                orderId: order._id.toString()
+            })
             const emailDetails = {
                 orderId: order.orderId,
                 status,

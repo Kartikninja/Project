@@ -99,33 +99,15 @@ export class UserSubscriptionService {
 
         await UserModel.findByIdAndUpdate(userId, { $push: { subscription: newUserSubscription._id } })
 
-        const io = this.notification.getIO()
-        if (io) {
-            try {
-                io.to(`subScription_${subscriptionId}`).emit('notification', {
-                    modelName: 'UserSubscription',
-                    userSubscriptionId: newUserSubscription.id,
-                    message: `New SubScription Purchase ${newUserSubscription.userId}`,
-                    type: 'User-Buy-subscription',
-                    createdBy: 'User'
-                })
-                console.log(`Notification sent to SubScription ${subscriptionId}`);
-
-            } catch (err) {
-                console.log(`Error in subScription emmiting notification `, err)
-            }
-        }
-        await this.notification.sendAdminNotification(
-            'UserSubscription',
-            `New Subscription purches ${newUserSubscription.userId}`,
-            'User-Buy-subscription',
-            'System',
-            newUserSubscription.userId,
-            undefined,
-            undefined,
-            newUserSubscription.id,
-            subscriptionId,
-        )
+        await this.notification.sendNotification({
+            modelName: 'UserSubscription',
+            usersubScriptionId: newUserSubscription._id.toString(),
+            createdBy: 'User',
+            type: 'User-Purchase-SubScription',
+            metadata: { expiry: userSubscriptionData.expiry },
+            userId: newUserSubscription.userId,
+            subScriptionId: subscriptionId,
+        })
 
 
         const populatedUser = await UserModel.findById(userId).select('fullName email');
@@ -247,15 +229,10 @@ export class UserSubscriptionService {
             isActive: true
         }).populate<{ subscriptionId: UserSubscription, userId: UserPurchaseSubScription }>('subscriptionId userId');
 
-        console.log("expiringSubscriptions", expiringSubscriptions);
-
         for (const sub of expiringSubscriptions) {
             const user = sub.userId;
             const subscription = sub.subscriptionId;
 
-            console.log("check Sub function", sub);
-            console.log("user check cron", user);
-            console.log("user.fullName", user.fullName);
 
             const emailData = {
                 userName: user.fullName,
@@ -281,7 +258,6 @@ export class UserSubscriptionService {
             endDate: { $lt: currentDate },
             isActive: true
         });
-        console.log("expiredSubscriptions", expiredSubscriptions)
 
         for (const sub of expiredSubscriptions) {
             if (!sub.isAutoRenew) {
@@ -300,37 +276,7 @@ export class UserSubscriptionService {
             }
         }
 
-        console.log(`Checked and updated ${expiredSubscriptions.length} expired subscriptions.`);
     }
-    // const payment = await PaymentModel.findOne({ paymentId: checkSub.paymentId, orderId: checkSub.orderId });
-    // if (!payment) {
-    //     throw new Error('Payment not found for subscription');
-    // }
-    // if (refund.status === 'processed') {
-    //     payment.refundStatus = 'processed';
-    //     payment.amountRefunded = refund.amount / 100;
-    //     await payment.save();
-    //     checkSub.refundStatus = 'refunded';
-    //     checkSub.refundAmount = refundAmount;
-    //     checkSub.cancellationReason = cancellationReason;
-    //     checkSub.refundId = refund.id
-    //     checkSub.endDate = new Date();
-    //     await checkSub.save();
-    // } else {
-    //     checkSub.refundStatus = 'failed'
-    //     payment.refundStatus = 'failed'
-    //     await payment.save();
-    //     await checkSub.save()
-    //     throw new HttpException(400, 'Refund processing failed');
-
-    // }
-
-    //   checkSub.isActive = false
-    //                 checkSub.endDate = new Date();
-    //                 checkSub.cancelledAt = new Date()
-    //                 checkSub.isAutoRenew = null
-    //                 checkSub.expiry = null
-
 
     public async cancleSubscription(userId: string, subscriptionId: string, cancellationReason?: string) {
 
@@ -375,7 +321,6 @@ export class UserSubscriptionService {
             console.log("refundProcces", cancelResponse)
             if (cancelResponse.status === 'cancelled') {
 
-                console.log("=====Subscription Cancle function in procees starting for refund=====")
                 const refund = await razorpay.payments.refund(checkSub.paymentId, {
                     amount: refundAmount * 100,
                     speed: 'normal',
@@ -398,6 +343,16 @@ export class UserSubscriptionService {
             }
 
 
+            await this.notification.sendNotification({
+                modelName: 'UserSubscription',
+                usersubScriptionId: checkSub._id.toString(),
+                createdBy: 'User',
+                type: 'User-Cancel-SubScription',
+                metadata: { refundAmount: refundAmount },
+                userId: checkSub.userId,
+                subScriptionId: subscriptionId,
+            })
+
             return {
                 success: true,
 
@@ -414,33 +369,6 @@ export class UserSubscriptionService {
 
 
     }
-
-
-    // private async processRefund(subscription: UserSubscription): Promise<void> {
-    //     try {
-    //         const payment = await PaymentModel.findOne({ paymentId: subscription.paymentId, orderId: subscription.orderId });
-    //         if (!payment) {
-    //             throw new Error('Payment not found for subscription');
-    //         }
-
-
-    //         if (payment.amount > 0 && payment.refundStatus !== 'processed') {
-    //             const refundResponse = await razorpay.payments.refund(payment.paymentId, { amount: payment.amount });
-
-    //             payment.refundStatus = 'processed';
-    //             payment.amountRefunded = refundResponse.amount / 100; // Amount in INR
-    //             await payment.save();
-
-    //             // Optionally, update the subscription status based on refund processing
-    //             subscription.refundStatus = 'processed';
-    //             await subscription.save();
-    //         }
-    //     } catch (error) {
-    //         console.error('Error processing refund:', error);
-    //         throw new Error('Refund processing failed');
-    //     }
-    // }
-
 
 
 }
