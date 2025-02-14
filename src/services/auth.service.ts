@@ -64,29 +64,16 @@ export class AuthService {
       await sendOtpEmail(userData.email, otp, userData.fullName);
 
       const tokenData = await createToken(createUserData).token;
-      const io = this.notificationService.getIO();
-      if (io) {
-        try {
-          io.to('user-admin-room').emit('notification', {
-            modelName: 'User',
-            userId: createUserData._id,
-            message: `New user signed up: ${userData.fullName}`,
-            type: 'user-registered',
-            createdBy: 'Admin',
-          });
-        } catch (error) {
-          console.error('Error emitting notification to admin:', error);
-        }
-      }
 
 
-      await this.notificationService.sendAdminNotification(
-        'User',
-        `New User register ${createUserData.fullName}`,
-        'user-registered',
-        'User',
-        createUserData._id,
-      );
+
+      await this.notificationService.sendNotification({
+        modelName: 'User',
+        type: 'user-registered',
+        createdBy: 'Admin',
+        userId: createUserData._id,
+        metadata: { email: createUserData.email },
+      });
       await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
       return { user: createUserData, token: tokenData };
     }
@@ -160,56 +147,33 @@ export class AuthService {
       delete findUser.password
       delete findUser.token
 
-      const io = await this.notificationService.getIO()
-      if (io) {
-        try {
-          io.to('user-admin-room').emit('notification', {
-            modelName: 'User',
-            id: findUser._id,
-            message: `User logged in with email: ${findUser.email} `,
-            type: 'user-login',
-            createdBt: 'User',
 
-          })
-        } catch (err) {
-          console.log('Error emitting notification to admin', err)
-        }
-      }
-      await this.notificationService.sendAdminNotification(
-        'User',
-        `User logged in with email: ${findUser.email} `,
-        'user-login',
-        'User',
-        findUser._id,
-      );
+
+      await this.notificationService.sendNotification({
+        modelName: 'User',
+        type: 'user-login',
+        createdBy: 'Admin',
+        userId: findUser._id,
+        metadata: { email: findUser.email },
+      });
+
+
       return { findUser, tokenData };
     }
   }
 
   public async logout(user: User): Promise<boolean> {
     await UserModel.updateOne({ _id: user._id }, { token: '' })
-    const io = await this.notificationService.getIO()
-    if (io) {
-      try {
 
-        io.to('user-admin-room').emit("notification", {
-          modelName: 'User',
-          id: user._id,
-          message: `User with ID: ${user._id} has logged out`,
-          type: 'User-Logout',
-          createdBy: 'User',
-        });
-      } catch (err) {
-        console.log(err)
-      }
-    }
-    await this.notificationService.sendAdminNotification(
-      'User',
-      `User with ID: ${user._id} has logged out`,
-      'User-Logout',
-      'User',
-      user._id,
-    );
+
+    await this.notificationService.sendNotification({
+      modelName: 'User',
+      type: 'user-logout',
+      createdBy: 'User',
+      userId: user._id,
+      metadata: { email: user.email },
+    });
+
     return true
   }
 
@@ -239,22 +203,16 @@ export class AuthService {
 
     const link = `${FRONT_END_URL}/reset-password/${token}`;
     await sendForgotPasswordEmail(user.email, user.fullName, link);
-    const io = await this.notificationService.getIO()
-    io.to('user-admin-room').emit('notification', {
-      modelName: 'User',
-      id: user._id,
-      message: `Forgot Password requested for ${email} `,
-      type: 'Forgot-password',
-      createdBy: 'User'
-    })
 
-    await this.notificationService.sendAdminNotification(
-      'User',
-      `Forgot Password requested for ${email} `,
-      'User-Forgot-password',
-      'User',
-      user._id
-    )
+
+    await this.notificationService.sendNotification({
+      modelName: 'User',
+      type: 'User-Forgot-password',
+      createdBy: 'User',
+      userId: user._id,
+      metadata: { email: user.email },
+    });
+
 
     return user;
   }
@@ -275,21 +233,17 @@ export class AuthService {
     if (!user) throw new HttpException(409, "User doesn't exist");
     const hashedPassword = await hash(password, 10);
     const updatedUser = await UserModel.findByIdAndUpdate(user._id, { password: hashedPassword });
-    const io = await this.notificationService.getIO()
-    io.to('user-admin-room').emit('notification', {
+
+
+    await this.notificationService.sendNotification({
       modelName: 'User',
-      id: user._id,
-      message: `Password reset requested for ${userData.email}`,
-      type: "User-Reset-password",
-      createdBy: 'User'
-    })
-    await this.notificationService.sendAdminNotification(
-      'User',
-      `Password reset requested for ${userData.email} `,
-      "User-Reset-password",
-      'User',
-      user._id
-    )
+      type: 'User-Reset-password',
+      createdBy: 'User',
+      userId: user._id,
+      metadata: { email: user.email },
+    });
+
+
     return updatedUser;
   }
 }

@@ -4,11 +4,12 @@ import { NotificationService } from '../../services/Notification.service';
 const notification = new NotificationService();
 
 export const socketController = (socket: Socket, io: Server) => {
- 
 
-  console.log('Admin socket connected:', socket.id);
+
+  console.log('Admin socket connected:');
 
   socket.on("join-room", (roomName: string) => {
+    if (!roomName) return console.log("Room name is missing ")
     socket.join(roomName);
     console.log("roomName", roomName)
 
@@ -17,9 +18,9 @@ export const socketController = (socket: Socket, io: Server) => {
   });
 
   socket.on("join-admin-room", () => {
-    const room = "order-admin-room";
+    const room = "admin-room";
     socket.join(room);
-    console.log("socketController->Admin joined order-admin-room");
+    console.log("socketController->Admin joined admin-room");
   });
 
   socket.on("join-user-room", (userId: string) => {
@@ -46,3 +47,6 @@ export const socketController = (socket: Socket, io: Server) => {
   });
 };
 
+
+// 42["join-admin-room"]
+// 42["join-store-room", "67a36c3f303168529b2266fa"]

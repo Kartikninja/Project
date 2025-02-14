@@ -54,7 +54,7 @@ const UserSchema: Schema = new Schema(
       required: false
     },
     resetPasswordTokenExpiresAt: { type: Date, required: false },
-    customerId: { type: String, required: true }
+    customerId: { type: String, required: false }
 
   },
 

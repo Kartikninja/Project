@@ -10,11 +10,11 @@ export interface Notification {
     usersubScriptionId?: ObjectId
     subScriptionId?: ObjectId;
     message: string;
-    type: 'user-registered' | 'user-login' | 'admin-notification' | 'new-order' |
-    "User-Reset-password" | 'User-Update-Profile' | "Delete-User" |
-    'order-updated' | 'User-Forgot-password' | 'User-Buy-subscription';
+    type: 'Update-order-status' | 'user - registered' | 'user - login' | 'admin - notification' | 'new- order' |
+    "User-Reset-password" | 'User-Update-Profile' | "Delete-User" | 'Create-Store' |
+    'order-updated' | 'User-Forgot-password' | 'User-Buy-subscription' | 'Order-delete' | 'user-logout';
     isRead: boolean;
-    createdBy: 'System' | 'Admin' | ObjectId;
+    createdBy: 'System' | 'Admin' | 'User' | 'StoreOwner' | ObjectId;
     metadata?: Record<string, any>;
     createdAt: Date;
     updatedAt: Date

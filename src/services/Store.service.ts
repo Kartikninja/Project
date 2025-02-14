@@ -106,54 +106,20 @@ export class StoreService {
 
             const tokenData = await createToken(createStoreData).token
 
-            const io = this.notificationService.getIO();
-            if (io) {
-                try {
-                    io.to('store-admin-room').emit('notification', {
-                        modelName: 'Store',
-                        id: createStoreData._id,
-                        message: `New Store Created: ${createStoreData.storeName}`,
-                        type: 'new-store-registred',
-                        createdBy: 'Store'
-                    });
-                    console.log(`Admin notified of new store: ${createStoreData.storeName}`);
-                } catch (error) {
-                    console.error('Error emitting notification to admin:', error);
-                }
-            }
+
+            await this.notificationService.sendNotification({
+                modelName: 'Store',
+                type: 'Create-Store',
+                createdBy: 'StoreOwner',
+                storeId: createStoreData._id,
+                metadata: { email: createStoreData.email },
+            })
+
             await StoreModel.updateOne({ _id: createStoreData._id }, { token: tokenData })
             return { Store: createStoreData, token: tokenData }
         }
 
     }
-
-
-    //  try {
-    //     const contact = await razorpayInstance.contacts.create({
-    //         name: storeData.storeName,
-    //         email: storeData.email,
-    //         contact: storeData.phoneNumber,
-    //         type: "vendor",
-    //     });
-
-    //     const fundAccount = await razorpayInstance.fundAccount.create({
-    //         contact_id: contact.id,
-    //         account_type: "bank_account",
-    //         bank_account: {
-    //             name: storeData.storeName,
-    //             account_number: storeData.payoutBankDetails.accountNumber,
-    //             ifsc: storeData.payoutBankDetails.ifsc,
-    //         },
-    //     });
-
-    //     // 3. Save Razorpay IDs to Store
-    //     storeData.razorpayContactId = contact.id;
-    //     storeData.razorpayFundAccountId = fundAccount.id;
-
-    // } catch (error) {
-    //     await StoreModel.deleteOne({ email: storeData.email }); // Rollback
-    //     throw new HttpException(500, 'Razorpay account setup failed');
-    // }
 
 
 
@@ -199,21 +165,16 @@ export class StoreService {
         if (!data) throw new HttpException(409, `Invalid Password`);
         else {
             const tokenData = await createToken(findUser).token;
-            const io = this.notificationService.getIO();
-            if (io) {
-                try {
-                    io.to('store-admin-room').emit('notification', {
-                        modelName: 'Store',
-                        id: findUser._id,
-                        message: `Store Login: ${findUser.storeName}`,
-                        type: 'store-Login',
-                        createdBy: 'Store'
-                    });
-                    console.log(`Admin notified of new store: ${findUser.storeName}`);
-                } catch (error) {
-                    console.error('Error emitting notification to admin:', error);
-                }
-            }
+
+
+            await this.notificationService.sendNotification({
+                modelName: 'Store',
+                type: 'Login-Store',
+                createdBy: 'StoreOwner',
+                storeId: findUser._id,
+                metadata: { email: findUser.email },
+            })
+
             await StoreModel.updateOne({ _id: findUser._id }, { token: tokenData })
             delete findUser.password
             delete findUser.token
@@ -234,21 +195,15 @@ export class StoreService {
         await store.save()
         const link = `${FRONT_END_URL}/reset-password/${token}`
         await sendForgotPasswordEmail(store.email, store.fullName, link)
-        const io = this.notificationService.getIO();
-        if (io) {
-            try {
-                io.to('store-admin-room').emit('notification', {
-                    modelName: 'Store',
-                    id: store._id,
-                    message: `Forgot Password requested for ${store.email}`,
-                    type: 'Forgot-Password-requested',
-                    createdBy: 'Store'
-                });
-                console.log(`Admin notified of new store: ${store.storeName}`);
-            } catch (error) {
-                console.error('Error emitting notification to admin:', error);
-            }
-        }
+
+        await this.notificationService.sendNotification({
+            modelName: 'Store',
+            type: 'Store-Forgot-Password',
+            createdBy: 'StoreOwner',
+            storeId: store._id,
+            metadata: { email: store.email },
+        })
+
         return store
 
     }
@@ -268,15 +223,13 @@ export class StoreService {
         if (!store) throw new HttpException(409, "Store doesn't exist");
         const hashedPassword = await hash(password, 10);
         const updatedUser = await StoreModel.findByIdAndUpdate(store._id, { password: hashedPassword }, { new: true });
-        const io = await this.notificationService.getIO()
-        io.to('store-admin-room').emit('notification', {
+        await this.notificationService.sendNotification({
             modelName: 'Store',
-            id: store._id,
-            message: `Password reset requested for ${email}`,
-            type: "Reset-password",
-            createdBy: 'Store'
-        }
-        )
+            type: 'Store-Reset-Password',
+            createdBy: 'StoreOwner',
+            storeId: store._id,
+            metadata: { email: store.email },
+        })
         return updatedUser;
     }
 
@@ -311,13 +264,12 @@ export class StoreService {
         );
 
         console.log(`Removed store ${result.storeName} from userModel storesIds`);
-        const io = await this.notificationService.getIO()
-        io.to('store-admin-room').emit('notification', {
+        await this.notificationService.sendNotification({
             modelName: 'Store',
-            id: id,
-            message: `Delete  requested for ${result.email}`,
-            type: "delet-store",
-            createdBy: 'Store'
+            type: 'Delete-Store',
+            createdBy: 'StoreOwner',
+            storeId: result._id,
+            metadata: { email: result.email },
         })
         return result
     }
@@ -341,13 +293,12 @@ export class StoreService {
         if (!updatedStore) {
             throw new HttpException(404, "Store not found")
         }
-        const io = await this.notificationService.getIO()
-        io.to('store-admin-room').emit('notification', {
+        await this.notificationService.sendNotification({
             modelName: 'Store',
-            id: storeId,
-            message: `Update requested for ${existingData.email}`,
-            type: "update-store",
-            createdBy: 'Store'
+            type: 'Update-Store',
+            createdBy: 'StoreOwner',
+            storeId: updatedStore._id,
+            metadata: { email: updatedStore.email },
         })
         return updatedStore
     }
@@ -370,6 +321,16 @@ export class StoreService {
 
         const updatedStore = await store.save();
 
+
+        await this.notificationService.sendNotification({
+            modelName: 'Store',
+            type: 'Approve-Store',
+            createdBy: 'Admin',
+            storeId: updatedStore._id,
+            metadata: { email: updatedStore.email },
+        })
+
+
         return updatedStore;
     }
 
@@ -388,6 +349,15 @@ export class StoreService {
         store.updatedAt = new Date();
 
         const updatedStore = await store.save();
+
+
+        await this.notificationService.sendNotification({
+            modelName: 'Store',
+            type: 'Reject-Store',
+            createdBy: 'Admin',
+            storeId: updatedStore._id,
+            metadata: { email: updatedStore.email },
+        })
         return updatedStore;
     }
 

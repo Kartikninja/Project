@@ -6,16 +6,17 @@ import { instrument } from "@socket.io/admin-ui";
 
 export function initializeSocket(httpServer: any) {
     const io = new Server(httpServer, {
-        path: '/socket.io/',
+        // path: '/socket.io/',
         cors: {
-            origin: ["http://localhost:5173"],
+            // origin: ["http://localhost:5173"],
+            origin: ["*"],
             methods: ['GET', 'POST'],
-            credentials: true,
-            allowedHeaders: ['Content-Type'],
+            // credentials: true,
+            // allowedHeaders: ['Content-Type'],
 
         },
-        transports: ['polling', 'websocket'],
-        allowEIO3: true,
+        // transports: ['polling', 'websocket'],
+        // allowEIO3: true,
 
 
     });
@@ -25,7 +26,7 @@ export function initializeSocket(httpServer: any) {
     });
     console.log('Connected Socket')
     io.on("connect", (socket) => {
-        console.log("a user connected");
+        console.log("✅ New socket connection:", socket.id);
 
         socketController(socket, io);
 

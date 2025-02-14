@@ -34,22 +34,17 @@ export class UserService {
     if (profileImage) userData.profileImage = await this.uploadImage(profileImage)
     const updateUserById: User = await UserModel.findByIdAndUpdate(userId, userData, { new: true });
     if (!updateUserById) throw new HttpException(409, "User doesn't exist");
-    const io = await this.notificationService.getIO()
-    io.to('user-admin-room').emit('nootification', {
-      modelName: 'User',
-      id: updateUserById._id,
-      message: `${updateUserById.fullName}'s profile has been updated`,
-      type: "Update-Profile",
-      createdBy: 'User'
-    })
 
-    await this.notificationService.sendAdminNotification(
-      'User',
-      `${updateUserById.fullName}'s profile has been updated`,
-      'User-Update-Profile',
-      'User',
-      updateUserById._id
-    )
+    await this.notificationService.sendNotification({
+      modelName: 'User',
+      type: 'User-Update-Profile',
+      createdBy: 'User',
+      userId: updateUserById._id,
+      metadata: { email: updateUserById.email },
+    });
+
+
+
 
     return updateUserById;
   }
@@ -79,24 +74,18 @@ export class UserService {
   public async deleteUser(userId: string): Promise<Boolean> {
     const deleteUserById: Boolean = await UserModel.findByIdAndDelete(userId);
     if (!deleteUserById) throw new HttpException(409, "User doesn't exist");
-    const io = await this.notificationService.getIO()
-    io.to('user-admin-room').emit('notification', {
+    const user = await UserModel.findOne({ _id: userId })
+
+    await this.notificationService.sendNotification({
       modelName: 'User',
-      message: `User with id ${userId} has been deleted`,
-      id: userId,
-      type: "Delete-User",
-      createdBy: 'User'
-    })
+      type: 'Delete-User',
+      createdBy: 'User',
+      userId: userId,
+      metadata: { email: user.email },
+    });
 
 
 
-    await this.notificationService.sendAdminNotification(
-      'User',
-      `User with id ${userId} has been deleted`,
-      "Delete-User",
-      'User',
-      userId
-    )
 
     return true;
   }
@@ -115,6 +104,16 @@ export class UserService {
     if (!data) throw new HttpException(409, "Old password is incorrect");
     const hashedPassword = await hash(newPassword, 10);
     await UserModel.findByIdAndUpdate(userId, { password: hashedPassword })
+
+    await this.notificationService.sendNotification({
+      modelName: 'User',
+      type: 'User-Reset-password',
+      createdBy: 'User',
+      userId: userId,
+      metadata: { email: findUser.email },
+    });
+
+
     return true
   }
 
