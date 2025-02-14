@@ -1,16 +1,17 @@
 import { Product } from '@models/Product.model';
 import ProductInterface from '@interfaces/Product.interface';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { StoreModel } from '@/models/Store.model';
 import { HttpException } from '@/exceptions/httpException';
 import { SubCategory } from '@/models/SubCategory.model';
 import { Category } from '@/models/Category.model';
 import { redisClient } from '@/utils/redisClient';
 import { FilterQuery } from 'mongoose';
+import { NotificationService } from './Notification.service';
 
 @Service()
 class ProductService {
-
+    public notificationService = Container.get(NotificationService)
     public async createProduct(storeId: string, productData: ProductInterface): Promise<ProductInterface> {
 
 
@@ -34,6 +35,16 @@ class ProductService {
         }
 
         const newProduct = await Product.create({ ...productData, storeId });
+        await this.notificationService.sendNotification({
+            modelName: 'Product',
+            type: 'Create-Product',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            subCategoryId: productData.subCategoryId,
+            productId: newProduct._id.toString(),
+            metadata: { data: productData }
+        })
+
         return newProduct;
     }
 
@@ -125,7 +136,15 @@ class ProductService {
         product.subCategoryId = productData.subCategoryId || product.subCategoryId;
         product.updatedAt = new Date();
         await product.save();
-
+        await this.notificationService.sendNotification({
+            modelName: 'Product',
+            type: 'Update-Product',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            productId: productId,
+            subCategoryId: productData.subCategoryId || product.subCategoryId,
+            metadata: { updates: productData }
+        })
         return product;
     }
 
@@ -135,6 +154,15 @@ class ProductService {
         if (!deleteProduct) {
             throw new HttpException(404, 'Product not found with this store');
         }
+
+        await this.notificationService.sendNotification({
+            modelName: 'Product',
+            type: 'Delete-Product',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            productId: productId
+        })
+
         return deleteProduct;
     }
 

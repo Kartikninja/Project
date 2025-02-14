@@ -15,8 +15,8 @@ export function initializeSocket(httpServer: any) {
             // allowedHeaders: ['Content-Type'],
 
         },
-        // transports: ['polling', 'websocket'],
-        // allowEIO3: true,
+        transports: ['polling', 'websocket'],
+        allowEIO3: true,
 
 
     });

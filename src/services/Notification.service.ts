@@ -33,8 +33,8 @@ export class NotificationService {
      * @param {string} [data.subScriptionId] - Subscription ID (optional)
      */
     public async sendNotification(data: {
-        modelName: 'User' | 'Store' | 'Order' | 'UserSubscription' | 'Subscription';
-        type: 'User-Cancel-SubScription' | 'User-Purchase-SubScription' | 'SubScription-Deleted' | 'SubScription-Created' | 'Reject-Store' | 'Approve-Store' | 'Update-Store' | 'Delete-Store' | 'Store-Reset-Password' | 'Store-Forgot-Password' | 'Login-Store' | 'Create-Store' | 'user-logout' | 'Update-order-status' | 'User-Buy-subscription' | 'user-registered' | 'user-login' | 'admin-notification' | 'new-order' | 'order-updated' | 'order-cancelled' | 'User-Forgot-password' | 'User-Reset-password' | 'User-Update-Profile' | 'Delete-User' | 'Order-delete';
+        modelName: 'SubCategory' | 'ProductVariant' | 'User' | 'Store' | 'Order' | 'UserSubscription' | 'Subscription' | 'Product' | 'Category';
+        type: 'Delete-SubCategory' | 'Update-SubCategory' | 'Delete-Category' | 'Update-Category' | 'Delete-ProductVariant' | 'Update-ProductVariant' | 'Delete-Product' | 'Update-Product' | 'Create-Category' | 'Create-SubCategory' | 'Create-Product' | 'Create-ProductVariant' | 'User-Cancel-SubScription' | 'User-Purchase-SubScription' | 'SubScription-Deleted' | 'SubScription-Created' | 'Reject-Store' | 'Approve-Store' | 'Update-Store' | 'Delete-Store' | 'Store-Reset-Password' | 'Store-Forgot-Password' | 'Login-Store' | 'Create-Store' | 'user-logout' | 'Update-order-status' | 'User-Buy-subscription' | 'user-registered' | 'user-login' | 'admin-notification' | 'new-order' | 'order-updated' | 'order-cancelled' | 'User-Forgot-password' | 'User-Reset-password' | 'User-Update-Profile' | 'Delete-User' | 'Order-delete';
         createdBy: 'User' | 'StoreOwner' | 'Admin';
         userId?: string;
         storeId?: string;
@@ -42,6 +42,10 @@ export class NotificationService {
         subScriptionId?: string;
         usersubScriptionId?: string;
         metadata?: Record<string, any>;
+        categoryId?: string;
+        subCategoryId?: string;
+        productId?: string;
+        productVariantId?: string;
     }) {
         try {
             console.log('\n=== Sending Notification ===');
@@ -50,15 +54,6 @@ export class NotificationService {
             let storeMessage = '';
             let adminMessage = '';
             let userMessage = '';
-
-            let room = ''
-            if (data.modelName === 'User') {
-                room = `user_${data.userId}`
-            } else if (data.modelName === "Store") {
-                room = `store_${data.storeId}`;
-            } else if (data.modelName === "Order") {
-                room = `order_${data.orderId}`;
-            }
 
             switch (data.type) {
                 case 'new-order':
@@ -154,13 +149,73 @@ export class NotificationService {
                 case 'User-Cancel-SubScription':
                     userMessage = `You have successfully cancelled Subscription ${data.subScriptionId}.`
                     adminMessage = `${data.subScriptionId} Subscription cancel ${data.userId}`
-                    break
+                    break;
+                case 'Create-Category':
+                    storeMessage = `Category ${data.categoryId} has been created successfully.`;
+                    adminMessage = `New category ${data.categoryId} has been added by store ${data.storeId}.`;
+                    break;
+
+                case 'Create-SubCategory':
+                    storeMessage = `SubCategory ${data.subCategoryId} has been created successfully.`;
+                    adminMessage = `New subcategory ${data.subCategoryId} has been added under category ${data.categoryId} by store ${data.storeId}.`;
+                    break;
+
+                case 'Create-Product':
+                    storeMessage = `Product ${data.productId} has been added successfully.`;
+                    adminMessage = `New product ${data.productId} has been added under category ${data.categoryId} by store ${data.storeId}.`;
+                    break;
+
+                case 'Create-ProductVariant':
+                    storeMessage = `Product variant ${data.productVariantId} has been added successfully.`;
+                    adminMessage = `New product variant ${data.productVariantId} has been added for product ${data.productId} by store ${data.storeId}.`;
+                    break;
+                case 'Delete-SubCategory':
+                    storeMessage = `SubCategory ${data.subCategoryId} has been deleted successfully.`;
+                    adminMessage = `SubCategory ${data.subCategoryId} has been deleted from category ${data.categoryId} by store ${data.storeId}.`;
+                    break;
+
+                case 'Update-SubCategory':
+                    storeMessage = `SubCategory ${data.subCategoryId} has been updated successfully.`;
+                    adminMessage = `SubCategory ${data.subCategoryId} under category ${data.categoryId} has been updated by store ${data.storeId}.`;
+                    break;
+
+                case 'Delete-Category':
+                    storeMessage = `Category ${data.categoryId} has been deleted successfully.`;
+                    adminMessage = `Category ${data.categoryId} has been removed by store ${data.storeId}.`;
+                    break;
+
+                case 'Update-Category':
+                    storeMessage = `Category ${data.categoryId} has been updated successfully.`;
+                    adminMessage = `Category ${data.categoryId} has been updated by store ${data.storeId}.`;
+                    break;
+
+                case 'Delete-ProductVariant':
+                    storeMessage = `Product variant ${data.productVariantId} has been deleted successfully.`;
+                    adminMessage = `Product variant ${data.productVariantId} of product ${data.productId} has been removed by store ${data.storeId}.`;
+                    break;
+
+                case 'Update-ProductVariant':
+                    storeMessage = `Product variant ${data.productVariantId} has been updated successfully.`;
+                    adminMessage = `Product variant ${data.productVariantId} of product ${data.productId} has been updated by store ${data.storeId}.`;
+                    break;
+
+                case 'Delete-Product':
+                    storeMessage = `Product ${data.productId} has been deleted successfully.`;
+                    adminMessage = `Product ${data.productId} has been removed from category ${data.categoryId} by store ${data.storeId}.`;
+                    break;
+
+                case 'Update-Product':
+                    storeMessage = `Product ${data.productId} has been updated successfully.`;
+                    adminMessage = `Product ${data.productId} under category ${data.categoryId} has been updated by store ${data.storeId}.`;
+                    break;
+
                 default:
                     storeMessage = `Notification: ${data.type}`;
                     adminMessage = `Admin Notification: ${data.type}`;
                     userMessage = `Notification: ${data.type}`;
                     break;
             }
+
 
             const notification = await NotificationModel.create({
                 modelName: data.modelName,
@@ -172,6 +227,10 @@ export class NotificationService {
                 orderId: data.orderId,
                 subScriptionId: data.subScriptionId,
                 usersubScriptionId: data.usersubScriptionId,
+                categoryId: data.categoryId,
+                subCategoryId: data.subCategoryId,
+                productId: data.productId,
+                productVariantId: data.productVariantId,
                 isRead: false,
                 metadata: data.metadata || {},
             });
@@ -252,6 +311,35 @@ export class NotificationService {
                     subScriptionId: data.subScriptionId,
                     usersubScriptionId: data.usersubScriptionId
                 })
+            }
+
+
+            else if (['Category', 'SubCategory', 'Product', 'ProductVariant'].includes(data.modelName)) {
+                io.to(`admin-room`).emit('notification', {
+                    modelName: data.modelName,
+                    storeId: data.storeId,
+                    categoryId: data.categoryId,
+                    subCategoryId: data.subCategoryId,
+                    productId: data.productId,
+                    productVariantId: data.productVariantId,
+                    message: adminMessage,
+                    type: data.type,
+                    createdBy: data.createdBy,
+                });
+
+                io.to(`store_${data.storeId}`).emit(data.type, {
+                    modelName: data.modelName,
+                    storeId: data.storeId,
+                    categoryId: data.categoryId,
+                    subCategoryId: data.subCategoryId,
+                    productId: data.productId,
+                    productVariantId: data.productVariantId,
+                    message: storeMessage,
+                    type: data.type,
+                    createdBy: data.createdBy,
+                });
+
+                console.log(`📢 Notification sent to admin and store ${data.storeId}`);
             }
 
 
