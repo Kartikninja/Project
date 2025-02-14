@@ -5,7 +5,7 @@ const NotificationSchema: Schema = new Schema(
     {
         modelName: {
             type: String,
-            enum: ['User', 'Store', 'Order', 'UserSubscription', 'Subscription'],
+            enum: ['SubCategory', 'ProductVariant', 'User', 'Store', 'Order', 'UserSubscription', 'Subscription', 'Product', 'Category'],
             required: true,
         },
         userId: {
@@ -52,7 +52,7 @@ const NotificationSchema: Schema = new Schema(
         },
         type: {
             type: String,
-            enum: ['Create-Store', 'user-logout', 'Update-order-status', 'User-Buy-subscription', 'user-registered', 'user-login', 'admin-notification', 'new-order', 'order-updated', 'User-Forgot-password', "User-Reset-password", 'User-Update-Profile', "Delete-User", "Order-delete"],
+            enum: ['Delete-SubCategory', 'Update-SubCategory', 'Delete-Category', 'Update-Category', 'Delete-ProductVariant', 'Update-ProductVariant', 'Delete-Product', 'Update-Product', 'Create-Category', 'Create-SubCategory', 'Create-Product', 'Create-ProductVariant', 'User-Cancel-SubScription', 'User-Purchase-SubScription', 'SubScription-Deleted', 'SubScription-Created', 'Reject-Store', 'Approve-Store', 'Update-Store', 'Delete-Store', 'Store-Reset-Password', 'Store-Forgot-Password', 'Login-Store', 'Create-Store', 'user-logout', 'Update-order-status', 'User-Buy-subscription', 'user-registered', 'user-login', 'admin-notification', 'new-order', 'order-updated', 'order-cancelled', 'User-Forgot-password', 'User-Reset-password', 'User-Update-Profile', 'Delete-User', 'Order-delete'],
             default: 'info',
         },
         isRead: {

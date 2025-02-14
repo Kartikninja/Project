@@ -8,15 +8,6 @@ export const socketController = (socket: Socket, io: Server) => {
 
   console.log('Admin socket connected:');
 
-  socket.on("join-room", (roomName: string) => {
-    if (!roomName) return console.log("Room name is missing ")
-    socket.join(roomName);
-    console.log("roomName", roomName)
-
-
-    console.log("Admin joined the admin-room.");
-  });
-
   socket.on("join-admin-room", () => {
     const room = "admin-room";
     socket.join(room);
@@ -36,10 +27,11 @@ export const socketController = (socket: Socket, io: Server) => {
   });
 
   socket.on('join-subscription-room', (subScriptionId: string) => {
-    const room = `subScription_${subScriptionId}`;
+    const room = `user_${subScriptionId}`;
     socket.join(room);
     console.log(`Subscription joined room: ${room}`);
   })
+
 
 
   socket.on('disconnect', () => {

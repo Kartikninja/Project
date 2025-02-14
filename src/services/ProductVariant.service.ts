@@ -3,15 +3,17 @@ import { ProductVariant } from '@models/ProductVariant.model';
 import { Product } from '@models/Product.model';
 import { Category } from '@models/Category.model';
 import { SubCategory } from '@models/SubCategory.model';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { HttpException } from '@/exceptions/httpException';
 import { StoreModel } from '@/models/Store.model';
 import { FilterQuery } from 'mongoose';
 import { redisClient } from '@/utils/redisClient';
+import { NotificationService } from './Notification.service';
 
 
 @Service()
 export class ProductVariantService {
+    public notificationService = Container.get(NotificationService)
     public async createProductVariant(storeId: string, productVariantData: any) {
         const { productId, attributes } = productVariantData
         if (!attributes || Object.keys(attributes).length === 0) {
@@ -53,6 +55,16 @@ export class ProductVariantService {
         if (variants.length > 0) {
             await Product.updateOne({ _id: productId }, { basePrice: variants[0].price });
         }
+
+        await this.notificationService.sendNotification({
+            modelName: 'ProductVariant',
+            type: 'Create-ProductVariant',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            productId: productId,
+            productVariantId: newProductVariant._id.toString(),
+            metadata: { data: productVariantData }
+        });
 
         return newProductVariant;
     }
@@ -207,8 +219,20 @@ export class ProductVariantService {
         //         productVariant.attributes.material = productVariantData.attributes.material;
         //     }
         // }
+
+
         productVariant.updatedAt = new Date();
         await productVariant.save();
+
+        await this.notificationService.sendNotification({
+            modelName: 'ProductVariant',
+            type: 'Update-ProductVariant',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            productVariantId: id,
+            productId: productVariant.productId,
+            metadata: { updates: productVariantData }
+        });
 
         return productVariant;
 
@@ -222,6 +246,15 @@ export class ProductVariantService {
                 await Product.updateOne({ _id: variant.productId }, { hasVariants: false });
             }
         }
+        await this.notificationService.sendNotification({
+            modelName: 'ProductVariant',
+            type: 'Delete-ProductVariant',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            productVariantId: variantId,
+            productId: variant.productId
+        });
+        return variant;
     }
 
 

@@ -5,11 +5,13 @@ import { StoreModel } from '@/models/Store.model';
 import { SubCategory } from '@/models/SubCategory.model';
 import { redisClient } from '@/utils/redisClient';
 import { FilterQuery } from 'mongoose';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
+import { NotificationService } from './Notification.service';
 
 
 @Service()
 class SubCategoryService {
+    public notificationService = Container.get(NotificationService)
     public async createSubCategory(storeId: string, subCategoryData: any): Promise<any> {
         const checkName = await SubCategory.findOne({ name: subCategoryData.name })
         if (checkName) {
@@ -21,6 +23,15 @@ class SubCategoryService {
         }
 
         const subCategory = await SubCategory.create({ ...subCategoryData, storeId });
+        await this.notificationService.sendNotification({
+            modelName: 'SubCategory',
+            type: 'Create-SubCategory',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            categoryId: subCategoryData.categoryId,
+            subCategoryId: subCategory._id.toString(),
+            metadata: { data: subCategoryData }
+        });
         return subCategory;
     }
 
@@ -91,6 +102,14 @@ class SubCategoryService {
         if (!deletedSubCategory) {
             throw new Error('SubCategory not found');
         }
+        await this.notificationService.sendNotification({
+            modelName: 'SubCategory',
+            type: 'Delete-SubCategory',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            subCategoryId: id
+        });
+
     }
 
 
@@ -169,7 +188,15 @@ class SubCategoryService {
 
 
         await subCategory.save();
-
+        await this.notificationService.sendNotification({
+            modelName: 'SubCategory',
+            type: 'Update-SubCategory',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            subCategoryId: id,
+            categoryId: id,
+            metadata: { updates: subCategorydata }
+        });
         return subCategory;
 
 

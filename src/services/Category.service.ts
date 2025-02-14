@@ -1,14 +1,17 @@
 import { Category } from '@models/Category.model';
 import { CategoryInterface } from '@interfaces/Category.interface';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { HttpException } from '@/exceptions/httpException';
 import { StoreModel } from '@/models/Store.model';
 import { redisClient } from '@/utils/redisClient';
 import { FilterQuery } from 'mongoose';
+import { NotificationService } from './Notification.service';
 
 
 @Service()
 export class CategoryService {
+
+    public notificationService = Container.get(NotificationService)
     public async createCategory(categoryData: CategoryInterface): Promise<CategoryInterface> {
         const checkName = await Category.findOne({ name: categoryData.name })
         if (checkName) {
@@ -19,6 +22,14 @@ export class CategoryService {
             throw new HttpException(404, 'Store not found')
         }
         const category = await Category.create(categoryData);
+        await this.notificationService.sendNotification({
+            modelName: 'Category',
+            type: 'Create-Category',
+            createdBy: 'StoreOwner',
+            storeId: categoryData.storeId,
+            categoryId: category._id.toString(),
+            metadata: { data: categoryData }
+        });
         return category;
     }
 
@@ -57,7 +68,14 @@ export class CategoryService {
 
 
         await updatedCategory.save();
-
+        await this.notificationService.sendNotification({
+            modelName: 'Category',
+            type: 'Update-Category',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            categoryId: categoryId,
+            metadata: { updates: categoryData }
+        });
         return updatedCategory;
     }
 
@@ -68,6 +86,13 @@ export class CategoryService {
         }
         const deletedCategory = await Category.findByIdAndDelete({ _id: categoryId, storeId: storeId });
         if (!deletedCategory) throw new Error('Category not found');
+        await this.notificationService.sendNotification({
+            modelName: 'Category',
+            type: 'Delete-Category',
+            createdBy: 'StoreOwner',
+            storeId: storeId,
+            categoryId: categoryId
+        });
         return deletedCategory;
     }
 
