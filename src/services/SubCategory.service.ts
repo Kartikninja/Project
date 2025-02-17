@@ -7,17 +7,18 @@ import { redisClient } from '@/utils/redisClient';
 import { FilterQuery } from 'mongoose';
 import Container, { Service } from 'typedi';
 import { NotificationService } from './Notification.service';
+import { sendSubCategoryCreatedEmail, sendSubCategoryDeletedEmail, sendSubCategoryUpdatedEmail } from '@/utils/mailer';
 
 
 @Service()
 class SubCategoryService {
     public notificationService = Container.get(NotificationService)
     public async createSubCategory(storeId: string, subCategoryData: any): Promise<any> {
-        const checkName = await SubCategory.findOne({ name: subCategoryData.name })
+        const checkName = await (await SubCategory.findOne({ name: subCategoryData.name })).populated('storeId')
         if (checkName) {
             throw new HttpException(404, 'SubCategory Name Already Exit')
         }
-        const checkCategory = await Category.findOne({ _id: subCategoryData.categoryId, storeId: storeId })
+        const checkCategory = await (await Category.findOne({ _id: subCategoryData.categoryId, storeId: storeId })).populated('storeId')
         if (!checkCategory) {
             throw new HttpException(404, 'Category Not Found with this user')
         }
@@ -32,6 +33,15 @@ class SubCategoryService {
             subCategoryId: subCategory._id.toString(),
             metadata: { data: subCategoryData }
         });
+
+
+        await sendSubCategoryCreatedEmail({
+            subCategoryName: checkName.name,
+            email: checkName.email,
+            storeName: checkName.storeName,
+            storeId: storeId,
+        });
+
         return subCategory;
     }
 
@@ -98,7 +108,7 @@ class SubCategoryService {
 
 
     public async deleteSubCategory(storeId: string, id: string): Promise<void> {
-        const deletedSubCategory = await SubCategory.findByIdAndDelete({ _id: id, storeId: storeId });
+        const deletedSubCategory = (await SubCategory.findByIdAndDelete({ _id: id, storeId: storeId })).populated('storeId');
         if (!deletedSubCategory) {
             throw new Error('SubCategory not found');
         }
@@ -108,6 +118,13 @@ class SubCategoryService {
             createdBy: 'StoreOwner',
             storeId: storeId,
             subCategoryId: id
+        });
+
+        await sendSubCategoryDeletedEmail({
+            subCategoryName: deletedSubCategory.name,
+            email: deletedSubCategory.email,
+            storeName: deletedSubCategory.storeName,
+            storeId: storeId,
         });
 
     }
@@ -196,6 +213,13 @@ class SubCategoryService {
             subCategoryId: id,
             categoryId: id,
             metadata: { updates: subCategorydata }
+        });
+
+        await sendSubCategoryUpdatedEmail({
+            subCategoryName: subCategory.name,
+            email: checkStore.email,
+            storeName: checkStore.storeName,
+            storeId: storeId,
         });
         return subCategory;
 

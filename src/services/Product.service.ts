@@ -8,6 +8,7 @@ import { Category } from '@/models/Category.model';
 import { redisClient } from '@/utils/redisClient';
 import { FilterQuery } from 'mongoose';
 import { NotificationService } from './Notification.service';
+import { sendProductCreatedEmail, sendProductDeletedEmail, sendProductUpdatedEmail } from '@/utils/mailer';
 
 @Service()
 class ProductService {
@@ -44,6 +45,13 @@ class ProductService {
             productId: newProduct._id.toString(),
             metadata: { data: productData }
         })
+        await sendProductCreatedEmail({
+            productName: newProduct.name,
+            email: checkStore.email,
+            storeName: checkStore.storeName,
+            storeId: storeId,
+            subCategoryName: checkSubCategory.name
+        });
 
         return newProduct;
     }
@@ -113,15 +121,17 @@ class ProductService {
 
     public async updateProduct(storeId: string, productId: string, productData: ProductInterface): Promise<ProductInterface | null> {
 
-        const product = await Product.findOne({ _id: productId, storeId: storeId });
+        const product = (await Product.findOne({ _id: productId, storeId: storeId })).populated('storeId');
         if (!product) {
             throw new HttpException(404, 'Product not found with this store');
         }
+        let subName;
         if (productData.subCategoryId) {
-            const checkSubCategory = await SubCategory.findOne({ _id: productData.subCategoryId, storeId: storeId });
+            const checkSubCategory = (await SubCategory.findOne({ _id: productData.subCategoryId, storeId: storeId })).populated('storeId');
             if (!checkSubCategory) {
                 throw new HttpException(400, 'Invalid subCategoryId');
             }
+            checkSubCategory.name = subName
         }
         if (productData.name && productData.name !== product.name) {
             const existingProduct = await Product.findOne({ name: productData.name });
@@ -145,16 +155,30 @@ class ProductService {
             subCategoryId: productData.subCategoryId || product.subCategoryId,
             metadata: { updates: productData }
         })
+        await sendProductUpdatedEmail({
+            productName: product.name,
+            email: product.email,
+            storeName: product.storeName,
+            storeId: storeId,
+            subCategoryName: subName
+        });
+
         return product;
     }
 
     public async deleteProduct(storeId: string, productId: string) {
 
-        const deleteProduct = await Product.findByIdAndDelete({ _id: productId, storeId: storeId });
+        const deleteProduct = (await Product.findByIdAndDelete({ _id: productId, storeId: storeId })).populated('storeId');
         if (!deleteProduct) {
             throw new HttpException(404, 'Product not found with this store');
         }
-
+        await sendProductDeletedEmail({
+            productName: deleteProduct.name,
+            email: deleteProduct.email,
+            storeName: deleteProduct.storeName,
+            storeId: storeId,
+            subCategoryName: deleteProduct.subCategoryId
+        });
         await this.notificationService.sendNotification({
             modelName: 'Product',
             type: 'Delete-Product',
