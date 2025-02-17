@@ -61,7 +61,6 @@ class ProductService {
         const catchKey = 'getAllProducts'
         const redisData = await redisClient.get(catchKey)
         if (redisData) {
-            console.log("Data Catch from redis")
 
             return JSON.parse(redisData)
         }
@@ -76,7 +75,6 @@ class ProductService {
 
         const cachedData = await redisClient.get(cacheKey)
         if (cachedData) {
-            console.log("Data Catch from redis")
             return JSON.parse(cachedData)
         }
 
@@ -220,10 +218,8 @@ class ProductService {
         const catchKey = `search:${JSON.stringify(queryParams)}`
         const cachedData = await redisClient.get(catchKey)
         if (cachedData) {
-            console.log("Data is catch from redis")
             return JSON.parse(cachedData)
         }
-        console.log('Cache miss. Fetching from MongoDB...');
 
         const products = await Product.find(filter)
             .sort(sortOptions)
