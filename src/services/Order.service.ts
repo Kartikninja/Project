@@ -10,7 +10,7 @@ import { DiscountModel } from '@/models/Discount.model';
 import { Discount_TYPE, SUBSCRIPTIONS_TYPES } from '@/utils/constant';
 import { SubCategory } from '@/models/SubCategory.model';
 import { NotificationService } from './Notification.service';
-import { sendOrderUpdateEmail, sendPurchaseEmail, sendStatusUpdateEmail } from '@/utils/mailer';
+import { sendCancellationEmail, sendDeletionEmail, sendOrderUpdateEmail, sendPurchaseEmail, sendStatusUpdateEmail } from '@/utils/mailer';
 import { CartItem, DiscountAttributes } from '@/interfaces/Discount.interface';
 import { RazorpayService } from './razorpay.service';
 import { razorpayInstance } from '@/controllers/Payment.controller';
@@ -314,6 +314,7 @@ class OrderService {
             if (order.orderStatus === 'cancelled') {
                 throw new HttpException(400, 'Order already cancelled');
             }
+            const user = await UserModel.findOne({ _id: userId })
 
             let refundAmount = 0;
             const eligibleProducts: any[] = [];
@@ -398,6 +399,25 @@ class OrderService {
                 orderId: order._id.toString()
             })
             const updatedOrder = await OrderModel.findByIdAndUpdate(id, updateData, { new: true });
+            const emailDetails = {
+                orderDate: order.createdAt,
+                customerName: user.fullName || 'Valued Customer',
+                email: user.email,
+                orderId: order._id.toString(),
+                cancellationReason: cancellationReason || 'No reason provided',
+                refundAmount,
+                subject: 'Your Order Has Been Cancelled',
+                mailTitle: 'Order Cancellation Confirmation',
+                products: order.products.map((product: any) => ({
+                    productName: product.productId.ProductName,
+                    productImage: product.productId.imageUrl,
+                    variantName: product.variantName,
+                    price: product.discountedPrice,
+                    quantity: product.quantity
+                }))
+            };
+
+            await sendCancellationEmail(emailDetails);
 
             return {
                 success: true,
@@ -455,16 +475,36 @@ class OrderService {
         return orders;
     }
 
-    public async deleteOrder(orderId: string): Promise<void> {
+    public async deleteOrder(orderId: string, userId: string): Promise<void> {
         const result = await OrderModel.findByIdAndDelete(orderId);
         await this.notification.sendNotification({
             modelName: 'Order',
             type: 'Order-delete',
             userId: result.userId.toString(),
-            storeId: result.storeId.toString(),
+            storeId: result.storeId.toString(), 
             createdBy: 'User',
             orderId: result._id.toString()
         })
+
+        const user = await UserModel.findOne({ _id: userId })
+        const emailDetails = {
+            orderDate: result.createdAt,
+            customerName: user.fullName || 'Valued Customer',
+            email: user.email,
+            orderId: orderId,
+            subject: 'Your Order Has Been Deleted',
+            mailTitle: 'Order Deletion Confirmation',
+            products: result.products.map((product: any) => ({
+                productName: product.productId.ProductName,
+                productImage: product.productId.imageUrl,
+                variantName: product.variantName,
+                price: product.discountedPrice,
+                quantity: product.quantity
+            }))
+        };
+
+        await sendDeletionEmail(emailDetails);
+
         if (!result) throw new Error('Order not found or already deleted');
     }
 

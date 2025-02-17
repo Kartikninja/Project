@@ -6,7 +6,7 @@ import Container, { Service } from "typedi";
 import { PaymentService } from "./Paymnet.Service";
 import { PaymentModel } from "@/models/Payment.model";
 import { NotificationService } from "./Notification.service";
-import { sendpurchaseSubscriptionemail, sendSubscriptionExpiryEmail } from "@/utils/mailer";
+import { sendCancelSubscriptionEmail, sendpurchaseSubscriptionemail, sendSubscriptionExpiryEmail } from "@/utils/mailer";
 import { User } from "@/interfaces/users.interface";
 import { UserPurchaseSubScription, UserSubscription } from "@/interfaces/UserSubscription.interface";
 import { RazorpayService } from "./razorpay.service";
@@ -286,7 +286,7 @@ export class UserSubscriptionService {
             isActive: true
         }).populate('subscriptionId');
 
-
+        const user = await UserModel.findOne({ _id: userId })
         if (!checkSub) {
             throw new HttpException(404, 'Subscription not found');
         }
@@ -352,6 +352,18 @@ export class UserSubscriptionService {
                 userId: checkSub.userId,
                 subScriptionId: subscriptionId,
             })
+
+            await sendCancelSubscriptionEmail({
+                userName: user.fullName,
+                email: user.email,
+                subscriptionDetails: {
+                    subscriptionId: checkSub._id.toString(),
+                    transactionId: checkSub.paymentId,
+                    refundAmount,
+                    cancellationReason,
+                },
+            });
+
 
             return {
                 success: true,
