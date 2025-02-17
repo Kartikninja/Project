@@ -222,6 +222,85 @@ export const sendOrderUpdateEmail = async (emailData: any) => {
   await sendEmail(emailData.email, subject, 'OrderUpdate', additionalData);
 }
 
+
+export const sendCancellationEmail = async (orderDetails: any) => {
+  const subject = 'Your Order Cancellation Confirmation';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    customerName: orderDetails.customerName,
+    orderId: orderDetails.orderId,
+    orderDate: orderDetails.orderDate,
+    cancellationReason: orderDetails.cancellationReason,
+    refundAmount: orderDetails.refundAmount,
+    products: orderDetails.products.map((product: any) => ({
+      productName: product.productName,
+      productImage: product.productImage,
+      price: product.price,
+      quantity: product.quantity,
+      variantName: product.variantName
+    })),
+    mailTitle: 'Order Cancellation Confirmation',
+    appName,
+    year
+  };
+
+  await sendEmail(orderDetails.email, subject, 'cancelOrder', additionalData);
+};
+
+
+
+export const sendDeletionEmail = async (orderDetails: any) => {
+  const subject = 'Your Order Deletion Confirmation';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    customerName: orderDetails.customerName,
+    orderId: orderDetails.orderId,
+    orderDate: orderDetails.orderDate,
+    products: orderDetails.products.map((product: any) => ({
+      productName: product.productName,
+      productImage: product.productImage,
+      price: product.price,
+      quantity: product.quantity,
+      variantName: product.variantName
+    })),
+    mailTitle: 'Order Deletion Confirmation',
+    appName,
+    year
+  };
+
+  await sendEmail(orderDetails.email, subject, 'deleteOrder', additionalData);
+};
+
+
+export const sendCancelSubscriptionEmail = async (details: any) => {
+  const subject = 'Your Subscription Cancellation Confirmation';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending cancellation confirmation email:", details);
+
+  const additionalData = {
+    customerName: details.userName,
+    email: details.email,
+    subscriptionId: details.subscriptionDetails.subscriptionId,
+    transactionId: details.subscriptionDetails.transactionId || 'N/A',
+    cancellationDate: new Date().toISOString(),
+    refundAmount: details.subscriptionDetails.refundAmount || 0,
+    cancellationReason: details.subscriptionDetails.cancellationReason || 'User requested',
+    mailTitle: 'Your subscription has been canceled',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'cancelSubscription', additionalData);
+};
+
+
+
+
 // export const sendOrderUpdateEmail = async (emailData: any) => {
 //   console.log("emailData", emailData)
 //   const subject = 'Your Order has been Updated';
