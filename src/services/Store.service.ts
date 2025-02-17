@@ -7,7 +7,7 @@ import { USER_ROLES } from "@/utils/constant";
 import { compare, hash } from "bcrypt";
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs'
-import { sendForgotPasswordEmail, sendOtpEmail, sendWelcomEmail } from "@/utils/mailer";
+import { sendForgotPasswordEmail, sendOtpEmail, sendStoreApprovedEmail, sendStoreCreatedEmail, sendStoreDeletedEmail, sendStoreRejectedEmail, sendStoreUpdatedEmail, sendWelcomEmail } from "@/utils/mailer";
 import { FRONT_END_URL, SECRET_KEY } from "@/config";
 import { sign, verify } from 'jsonwebtoken';
 import { DataStoredInToken, TokenData } from "@/interfaces/auth.interface";
@@ -113,6 +113,13 @@ export class StoreService {
                 createdBy: 'StoreOwner',
                 storeId: createStoreData._id,
                 metadata: { email: createStoreData.email },
+            })
+
+
+            await sendStoreCreatedEmail({
+                storeName: storeData.storeName,
+                email: storeData.email,
+                storeId: createStoreData._id.toString(),
             })
 
             await StoreModel.updateOne({ _id: createStoreData._id }, { token: tokenData })
@@ -271,6 +278,14 @@ export class StoreService {
             storeId: result._id,
             metadata: { email: result.email },
         })
+
+        await sendStoreDeletedEmail({
+            storeName: result.storeName,
+            email: result.email,
+            storeId: result._id.toString(),
+        });
+
+
         return result
     }
 
@@ -300,6 +315,14 @@ export class StoreService {
             storeId: updatedStore._id,
             metadata: { email: updatedStore.email },
         })
+
+        await sendStoreUpdatedEmail({
+            storeName: updatedStore.storeName,
+            email: updatedStore.email,
+            storeId: updatedStore._id.toString(),
+        });
+
+
         return updatedStore
     }
 
@@ -329,6 +352,11 @@ export class StoreService {
             storeId: updatedStore._id,
             metadata: { email: updatedStore.email },
         })
+        await sendStoreApprovedEmail({
+            storeName: updatedStore.name,
+            email: updatedStore.email,
+            storeId: updatedStore._id,
+        });
 
 
         return updatedStore;
@@ -358,6 +386,11 @@ export class StoreService {
             storeId: updatedStore._id,
             metadata: { email: updatedStore.email },
         })
+        await sendStoreRejectedEmail({
+            storeName: updatedStore.name,
+            email: updatedStore.email,
+            storeId: updatedStore._id,
+        });
         return updatedStore;
     }
 

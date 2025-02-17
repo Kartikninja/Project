@@ -299,6 +299,331 @@ export const sendCancelSubscriptionEmail = async (details: any) => {
 };
 
 
+export const sendStoreCreatedEmail = async (details: any) => {
+  const subject = 'Welcome to Your Store!';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store creation email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    registrationDate: new Date().toISOString(),
+    mailTitle: 'Your store has been successfully created',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeCreated', additionalData);
+};
+
+
+export const sendStoreUpdatedEmail = async (details: any) => {
+  const subject = 'Your Store Details Have Been Updated';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store update email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    updateDate: new Date().toISOString(),
+    mailTitle: 'Your store details have been updated',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeUpdated', additionalData);
+};
+
+
+export const sendStoreDeletedEmail = async (details: any) => {
+  const subject = 'Your Store Has Been Deleted';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store deletion email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    deletionDate: new Date().toISOString(),
+    mailTitle: 'Your store has been deleted',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeDeleted', additionalData);
+};
+
+
+export const sendStoreApprovedEmail = async (details: any) => {
+  const subject = 'Your Store Has Been Approved';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store approval email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    approvedAt: new Date().toISOString(),
+    mailTitle: 'Your store has been approved',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeApproved', additionalData);
+};
+
+
+export const sendStoreRejectedEmail = async (details: any) => {
+  const subject = 'Your Store Has Been Rejected';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store rejection email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    rejectedAt: new Date().toISOString(),
+    mailTitle: 'Your store has been rejected',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeRejected', additionalData);
+};
+export const sendCategoryAddedEmail = async (details: any) => {
+  const subject = 'New Category Added to Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending category added email:", details);
+
+  const additionalData = {
+    categoryName: details.categoryName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    createdAt: new Date().toISOString(),
+    mailTitle: `A new category (${details.categoryName}) has been added to your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'categoryAdded', additionalData);
+};
+
+export const sendCategoryUpdatedEmail = async (details: any) => {
+  const subject = 'Category Updated in Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending category updated email:", details);
+
+  const additionalData = {
+    categoryName: details.categoryName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    updates: details.updates, // Object containing updated fields
+    updatedAt: new Date().toISOString(),
+    mailTitle: `The category (${details.categoryName}) has been updated in your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'categoryUpdated', additionalData);
+};
+
+
+export const sendCategoryDeletedEmail = async (details: any) => {
+  const subject = 'Category Removed from Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending category deleted email:", details);
+
+  const additionalData = {
+    categoryName: details.categoryName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    deletedAt: new Date().toISOString(),
+    mailTitle: `The category (${details.categoryName}) has been removed from your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'categoryDeleted', additionalData);
+};
+
+
+
+
+
+
+
+export const sendSubCategoryCreatedEmail = async (details: any) => {
+  const subject = 'New SubCategory Added to Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    subCategoryName: details.subCategoryName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    createdAt: new Date().toISOString(),
+    mailTitle: `A new subcategory (${details.subCategoryName}) has been added to your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'subCategoryCreated', additionalData);
+};
+
+export const sendSubCategoryUpdatedEmail = async (details: any) => {
+  const subject = 'SubCategory Updated in Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    subCategoryName: details.subCategoryName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    updatedAt: new Date().toISOString(),
+    mailTitle: `The subcategory (${details.subCategoryName}) in your store has been updated.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'subCategoryUpdated', additionalData);
+};
+
+export const sendSubCategoryDeletedEmail = async (details: any) => {
+  const subject = 'SubCategory Removed from Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    subCategoryName: details.subCategoryName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    deletedAt: new Date().toISOString(),
+    mailTitle: `The subcategory (${details.subCategoryName}) has been removed from your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'subCategoryDeleted', additionalData);
+};
+
+
+
+
+
+export const sendProductCreatedEmail = async (details: any) => {
+  const subject = 'Product Created in Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    productName: details.productName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    subCategoryName: details.subCategoryName,
+    createdAt: new Date().toISOString(),
+    mailTitle: `The product ${details.productName} has been created in your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'createProduct', additionalData);
+};
+
+export const sendProductUpdatedEmail = async (details: any) => {
+  const subject = 'Product Updated in Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    productName: details.productName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    subCategoryName: details.subCategoryName,
+    updatedAt: new Date().toISOString(),
+    mailTitle: `The product ${details.productName} has been updated in your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'updateProduct', additionalData);
+};
+
+export const sendProductDeletedEmail = async (details: any) => {
+  const subject = 'Product Deleted in Your Store';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+
+  const additionalData = {
+    productName: details.productName,
+    email: details.email,
+    storeName: details.storeName,
+    storeId: details.storeId,
+    subCategoryName: details.subCategoryName,
+    deletedAt: new Date().toISOString(),
+    mailTitle: `The product ${details.productName} has been deleted from your store.`,
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'deleteProduct', additionalData);
+};
+
+
+
+export const sendProductVariantNotificationEmail = async (details: any) => {
+  const { action, productVariantData, storeId, productId, storeName, email } = details;
+  let subject = '';
+  let mailTitle = '';
+  // console.log("details", details)
+  const productName = productVariantData.productId.name; // Accessing populated productName
+
+  if (action === 'Create-ProductVariant') {
+    subject = 'New Product Variant Created';
+    mailTitle = `A new variant has been created for product "${productName}" in your store.`;
+  } else if (action === 'Update-ProductVariant') {
+    subject = 'Product Variant Updated';
+    mailTitle = `The variant for product "${productName}" has been updated in your store.`;
+  } else if (action === 'Delete-ProductVariant') {
+    subject = 'Product Variant Deleted';
+    mailTitle = `The variant for product "${productName}" has been deleted from your store.`;
+  }
+
+  const year = new Date().getFullYear();
+  const additionalData = {
+    action,
+    productName,
+    variantName: productVariantData.variantName,
+    storeName,
+    storeId,
+    productVariantId: productVariantData._id,
+    productId,
+    updatedAt: new Date().toISOString(),
+    mailTitle,
+    appName: 'Your Store',
+    year,
+  };
+
+  await sendEmail(email, subject, 'productVariantNotification', additionalData);
+};
+
 
 
 // export const sendOrderUpdateEmail = async (emailData: any) => {

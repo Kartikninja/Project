@@ -6,6 +6,7 @@ import { StoreModel } from '@/models/Store.model';
 import { redisClient } from '@/utils/redisClient';
 import { FilterQuery } from 'mongoose';
 import { NotificationService } from './Notification.service';
+import { sendCategoryAddedEmail, sendCategoryDeletedEmail, sendCategoryUpdatedEmail } from '@/utils/mailer';
 
 
 @Service()
@@ -29,6 +30,12 @@ export class CategoryService {
             storeId: categoryData.storeId,
             categoryId: category._id.toString(),
             metadata: { data: categoryData }
+        });
+        await sendCategoryAddedEmail({
+            categoryName: categoryData.name,
+            email: checkStore.email,
+            storeName: checkStore.storeName,
+            storeId: checkStore._id,
         });
         return category;
     }
@@ -76,6 +83,15 @@ export class CategoryService {
             categoryId: categoryId,
             metadata: { updates: categoryData }
         });
+
+
+        await sendCategoryUpdatedEmail({
+            categoryName: updatedCategory.name,
+            email: checkStore.email,
+            storeName: checkStore.storeName,
+            storeId: checkStore._id,
+            updates: categoryData,
+        });
         return updatedCategory;
     }
 
@@ -92,6 +108,12 @@ export class CategoryService {
             createdBy: 'StoreOwner',
             storeId: storeId,
             categoryId: categoryId
+        });
+        await sendCategoryDeletedEmail({
+            categoryName: deletedCategory.name,
+            email: checkStore.email,
+            storeName: checkStore.storeName,
+            storeId: checkStore._id,
         });
         return deletedCategory;
     }

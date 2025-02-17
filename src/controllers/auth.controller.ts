@@ -62,7 +62,7 @@ export class AuthController {
   public socialLogin = async (req: Request, res: Response, next: NextFunction) => {
     try {
       req.body = pick(req.body);
-      const data = await this.auth.googleSingIn(req.body);
+      const data = await this.auth.googleSignIn(req.body);
       return res.status(200).json({ message: "User Logged in", data });
     } catch (error) {
       next(error);

@@ -9,6 +9,7 @@ import { StoreModel } from '@/models/Store.model';
 import { FilterQuery } from 'mongoose';
 import { redisClient } from '@/utils/redisClient';
 import { NotificationService } from './Notification.service';
+import { sendProductVariantNotificationEmail } from '@/utils/mailer';
 
 
 @Service()
@@ -47,6 +48,7 @@ export class ProductVariantService {
 
 
         const newProductVariant = await ProductVariant.create({ ...productVariantData, storeId });
+        const populatedProductVariant = await ProductVariant.findById(newProductVariant._id).populate('productId');
 
         if (!checkProduct.hasVariants) {
             await Product.updateOne({ _id: productId }, { hasVariants: true });
@@ -65,6 +67,16 @@ export class ProductVariantService {
             productVariantId: newProductVariant._id.toString(),
             metadata: { data: productVariantData }
         });
+
+        await sendProductVariantNotificationEmail({
+            action: 'Create-ProductVariant',
+            productVariantData: populatedProductVariant,
+            storeId: storeId,
+            productId: productId,
+            storeName: checkStore.storeName,
+            email: checkStore.email,
+        });
+
 
         return newProductVariant;
     }
@@ -220,6 +232,8 @@ export class ProductVariantService {
         //     }
         // }
 
+        const populatedProductVariant = await ProductVariant.findById(productVariant._id)
+            .populate('productId');
 
         productVariant.updatedAt = new Date();
         await productVariant.save();
@@ -233,29 +247,61 @@ export class ProductVariantService {
             productId: productVariant.productId,
             metadata: { updates: productVariantData }
         });
+        await sendProductVariantNotificationEmail({
+            action: 'Update-ProductVariant',
+            productVariantData: populatedProductVariant,
+            storeId: storeId,
+            productId: productVariant.productId,
+            storeName: checkStore.storeName,
+            email: checkStore.email,
+        });
 
         return productVariant;
 
     }
 
-    public async deleteProductVariant(variantId: string, storeId: string) {
-        const variant = await ProductVariant.findByIdAndDelete({ _id: variantId, storeId: storeId });
-        if (variant) {
-            const remainingVariants = await ProductVariant.countDocuments({ productId: variant.productId });
+
+    public async deleteProductVariant(storeId: string, variantId: string) {
+        const checkStore = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' });
+        if (!checkStore) {
+            throw new HttpException(404, 'Store not found');
+        }
+
+        const productVariant = await ProductVariant.findById(variantId).populate('productId');
+        if (!productVariant) {
+            throw new HttpException(404, 'Product Variant not found');
+        }
+        if (productVariant) {
+            const remainingVariants = await ProductVariant.countDocuments({ productId: productVariant.productId })
             if (remainingVariants === 0) {
-                await Product.updateOne({ _id: variant.productId }, { hasVariants: false });
+                await Product.updateOne({ _id: productVariant.productId }, { hasVariants: false })
             }
         }
+
+        await ProductVariant.deleteOne({ _id: variantId });
+
         await this.notificationService.sendNotification({
             modelName: 'ProductVariant',
             type: 'Delete-ProductVariant',
             createdBy: 'StoreOwner',
             storeId: storeId,
+            productId: productVariant.productId._id,
             productVariantId: variantId,
-            productId: variant.productId
+            metadata: { data: productVariant },
         });
-        return variant;
+
+        await sendProductVariantNotificationEmail({
+            action: 'Delete-ProductVariant',
+            productVariantData: productVariant,
+            storeId: storeId,
+            productId: productVariant.productId._id,
+            storeName: checkStore.storeName,
+            email: checkStore.email,
+        });
+
+        return { message: 'Product variant deleted successfully' };
     }
+
 
 
     public async searchProductVariant(queryParams: any) {
