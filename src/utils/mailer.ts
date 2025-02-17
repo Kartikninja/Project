@@ -299,6 +299,106 @@ export const sendCancelSubscriptionEmail = async (details: any) => {
 };
 
 
+export const sendStoreCreatedEmail = async (details: any) => {
+  const subject = 'Welcome to Your Store!';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store creation email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    registrationDate: new Date().toISOString(),
+    mailTitle: 'Your store has been successfully created',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeCreated', additionalData);
+};
+
+
+export const sendStoreUpdatedEmail = async (details: any) => {
+  const subject = 'Your Store Details Have Been Updated';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store update email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    updateDate: new Date().toISOString(),
+    mailTitle: 'Your store details have been updated',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeUpdated', additionalData);
+};
+
+
+export const sendStoreDeletedEmail = async (details: any) => {
+  const subject = 'Your Store Has Been Deleted';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store deletion email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    deletionDate: new Date().toISOString(),
+    mailTitle: 'Your store has been deleted',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeDeleted', additionalData);
+};
+
+
+export const sendStoreApprovedEmail = async (details: any) => {
+  const subject = 'Your Store Has Been Approved';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store approval email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    approvedAt: new Date().toISOString(),
+    mailTitle: 'Your store has been approved',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeApproved', additionalData);
+};
+
+
+export const sendStoreRejectedEmail = async (details: any) => {
+  const subject = 'Your Store Has Been Rejected';
+  const appName = 'Your Store';
+  const year = new Date().getFullYear();
+  console.log("Sending store rejection email:", details);
+
+  const additionalData = {
+    customerName: details.storeName,
+    email: details.email,
+    storeId: details.storeId,
+    rejectedAt: new Date().toISOString(),
+    mailTitle: 'Your store has been rejected',
+    appName,
+    year,
+  };
+
+  await sendEmail(details.email, subject, 'storeRejected', additionalData);
+};
+
+
 
 
 // export const sendOrderUpdateEmail = async (emailData: any) => {

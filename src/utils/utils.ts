@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { createClient } from "@deepgram/sdk";
 import multer from 'multer';
+import { OAuth2Client } from 'google-auth-library';
+import { HttpException } from '@/exceptions/httpException';
 
 export const QUERY_PARAMS = (params: object) => {
   const LIMIT = params['limit'] || 20;
@@ -91,12 +93,20 @@ export const pick = (obj: { [x: string]: any }) => {
   return obj;
 };
 
+
+const client = new OAuth2Client("280000882284-fmkmhiiqvj6po5i7h5caokiu7d1it54u.apps.googleusercontent.com");
+
 export const verifyGoogleToken = async (token: string) => {
   try {
-    const userInfo = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${token}` } });
-    return userInfo.data;
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: "280000882284-fmkmhiiqvj6po5i7h5caokiu7d1it54u.apps.googleusercontent.com",
+    });
+    const payload = ticket.getPayload();
+    return payload;
   } catch (err) {
-    console.error(err);
+    console.error("Google token verification failed:", err);
+    throw new HttpException(401, "Invalid Google token");
   }
 };
 

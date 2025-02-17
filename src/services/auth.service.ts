@@ -105,32 +105,33 @@ export class AuthService {
   }
 
 
-  public async googleSingIn(body: GoogleSignInBody): Promise<{ user: User, token: string }> {
+  // https://accounts.google.com/o/oauth2/v2/auth?client_id=280000882284-fmkmhiiqvj6po5i7h5caokiu7d1it54u.apps.googleusercontent.com&redirect_uri=http://localhost:3020/api/v1/auth/google/callback&response_type=code&scope=openid%20email%20profile
+
+  public async googleSignIn(body: { code: string }): Promise<{ user: User, token: string }> {
     const { code } = body;
-    const userInfo = await verifyGoogleToken(code)
-    const { sub, name, picture, email } = userInfo;
-    const findUser: User = await UserModel.findOne({ email, isActive: true }).lean();
 
-    if (findUser && findUser.password && !findUser.googleId) throw new HttpException(409, `You have Manualy Signed in with Email: ${findUser.email} and password. Please use Manual Login `)
-    else if (findUser.googleId) {
-      const tokenData = await createToken(findUser).token;
-      await UserModel.updateOne({ _id: findUser._id }, { token: tokenData })
-      return { user: findUser, token: tokenData };
+    const userInfo = await verifyGoogleToken(code);
+    const { sub: googleId, name, picture, email } = userInfo;
+
+    let user = await UserModel.findOne({ email });
+
+    if (user) {
+      if (user.password && !user.googleId) {
+        throw new HttpException(409, `You have manually signed in with Email: ${user.email} and password. Please use manual login.`);
+      }
+
+      if (!user.googleId) {
+        await UserModel.updateOne({ _id: user._id }, { googleId });
+      }
+    } else {
+      user = await UserModel.create({ email, fullName: name, profileImage: picture, googleId });
     }
 
-    const userObj = {
-      email,
-      fullName: name,
-      profileImage: picture,
-      googleId: sub
-    }
-    const user = await UserModel.create(userObj)
     const tokenData = await createToken(user).token;
-    await UserModel.updateOne({ _id: user._id }, { token: tokenData })
+    await UserModel.updateOne({ _id: user._id }, { token: tokenData });
 
     return { user, token: tokenData };
   }
-
   public async login(userData: User): Promise<{ findUser: User, tokenData: string }> {
     const { email, password } = userData
 
