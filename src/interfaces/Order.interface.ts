@@ -32,11 +32,13 @@ export interface Order {
     paymentId: string
     userId: Schema.Types.ObjectId;
     storeId: Schema.Types.ObjectId;
-    products: OrderProduct[];
+    // products: OrderProduct[];
+    CartId: Schema.Types.ObjectId
     totalPrice: number;
     orderStatus: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
     paymentStatus: 'paid' | 'unpaid' | 'refunded';
-    shippingAddress: string;
+    // shippingAddress: string;
+    shippingAddress: Schema.Types.ObjectId
     createdAt: Date;
     updatedAt: Date;
     orderId: string
@@ -51,6 +53,6 @@ export interface Order {
     cancelledAt?: Date;
     refundStatus: 'refunded' | 'partial' | 'not-refunded'
 
-    subScriptionDiscount: number
+    // subScriptionDiscount: number
 }
 

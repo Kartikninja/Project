@@ -1,4 +1,4 @@
-// src/routes/payout.route.ts
+
 import { Router } from 'express';
 import { PayoutController } from '@/controllers/Payout.controller';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';

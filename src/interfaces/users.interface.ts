@@ -21,7 +21,7 @@ export interface User {
   isVerified: Boolean;
   isSubscribed: Boolean;
   googleId: string;
-  country: string;
+  country: string;  
   about: string;
   registrationDate: string;
   subscription: mongoose.Types.ObjectId[];
@@ -44,6 +44,7 @@ export interface User {
   verificationToken: string,
   verificationTokenExpiresAt: Date,
   customerId?: string
+  addresses: mongoose.Types.ObjectId[]
 }
 export interface UserList {
   data: [User];

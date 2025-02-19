@@ -1,13 +1,17 @@
+import { UserModel } from '@/models/users.model';
+import { UserSubscriptionModel } from '@/models/UserSubscriptionSchema.model';
+import { UserService } from '@/services/user.service';
 import { UserSubscriptionService } from '@/services/UserSubscription.service';
 import cron from 'node-cron';
 import Container from 'typedi';
 
 export const cron1 = cron.schedule('0 0 * * *', async () => {
     const expirySub = Container.get(UserSubscriptionService)
-    console.log('Running daily subscription expiry check');
+    const user = Container.get(UserService)
     try {
-        console.log("Expired subscriptions checked and updated.");
         await expirySub.checkSubscriptionExpiry();
+
+        await user.checkSubsciption()
     } catch (error) {
         console.error("Error during cron job:", error);
     }

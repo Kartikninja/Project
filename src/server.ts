@@ -9,11 +9,13 @@ import ProductRouter from './routes/Product.route';
 import CategoryRoute from './routes/Category.route';
 import SubCategoryRoute from './routes/SubCategory.route';
 import ProductVariantRouter from './routes/ProductVariant.route';
-import OrderRouter from './routes/Order.route';
+import { OrderRouter } from './routes/Order.route';
 import { DiscountRouter } from './routes/Discount.route';
 import { NotificationRoute } from './routes/Notifiaction.route';
 import { RazorpayRoute } from './routes/razorpay.route';
 import { PayoutRoute } from './routes/Payout.route';
+import { AddressRouter } from './routes/Address.route';
+import { CartRoute } from './routes/cart.route';
 
 
 
@@ -29,7 +31,9 @@ new OrderRouter(),
 new DiscountRouter(),
 new NotificationRoute(),
 new RazorpayRoute(),
-new PayoutRoute()
+new PayoutRoute(),
+new AddressRouter(),
+new CartRoute()
 ]);
 
 app.listen();
