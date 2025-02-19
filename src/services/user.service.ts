@@ -6,6 +6,7 @@ import { hash, compare } from 'bcrypt';
 import Container, { Service } from 'typedi';
 import { redisClient } from '../utils/redisClient'
 import { NotificationService } from './Notification.service';
+import { UserSubscriptionModel } from '@/models/UserSubscriptionSchema.model';
 
 
 @Service()
@@ -115,6 +116,21 @@ export class UserService {
 
 
     return true
+  }
+
+  public async checkSubsciption() {
+    const users = await UserModel.find({ subscription: { $exists: true, $ne: [] } })
+    for (const user of users) {
+      const activationSubscription = await UserSubscriptionModel.find({
+        userId: user._id,
+        isActive: true
+      }).select('_id')
+      const activeSubIds = activationSubscription.map(sub => sub._id)
+      await UserModel.findByIdAndUpdate(user._id, {
+        subscription: activeSubIds,
+        isSubscribed: activeSubIds.length > 0
+      })
+    }
   }
 
 }

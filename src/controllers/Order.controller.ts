@@ -6,6 +6,7 @@ import Container from 'typedi';
 class OrderController {
     private orderService = Container.get(OrderService);
 
+    // const orderData = req.body;
     public createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { _id: userId } = req.user;
@@ -13,8 +14,8 @@ class OrderController {
             if (userRole !== 1) {
                 res.status(403).json({ message: 'You are not authorized to create an order' })
             }
-            const orderData = req.body;
-            const { order, payment } = await this.orderService.createOrder(userId, orderData);
+            const { cartId } = req.params
+            const { order, payment } = await this.orderService.createOrder(userId, cartId);
             res.status(201).json({ data: order, paymentDetails: payment, message: 'Order created successfully' });
         } catch (error) {
             next(error);
@@ -65,7 +66,7 @@ class OrderController {
         try {
             const userId = req.user._id
             const { id } = req.params;
-            await this.orderService.deleteOrder(id,userId);
+            await this.orderService.deleteOrder(id, userId);
             res.status(200).json({ message: 'Order deleted successfully' });
         } catch (error) {
             next(error);

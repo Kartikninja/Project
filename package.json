@@ -50,6 +50,7 @@
     "http": "^0.0.1-security",
     "https": "^1.0.0",
     "ioredis": "^5.4.2",
+    "ipinfo": "^1.5.2",
     "jsonwebtoken": "^8.5.1",
     "jszip": "^3.10.1",
     "module-alias": "^2.2.3",

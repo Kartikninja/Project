@@ -21,6 +21,7 @@ import { RAZORPAY_API_SECRET, WEBHOOK_SECRET, RAZORPAY_API_KEY, RAZORPAYX_API_KE
 import { Queue } from 'bullmq';
 import { PayoutService } from '@/services/payout.service';
 import { payoutQueue, shippingQueue } from '@/workers/Queue';
+import { cartModel } from '@/models/cart.model';
 
 
 
@@ -325,28 +326,24 @@ export class PaymentController {
                     purpose: 'payout',
                     DatabaseOrderId: updatedOrder._id
                 });
-                // const productStockUpdates = updatedOrder.products.map(product => ({
 
-                //     updateOne: {
-                //         filter: { _id: product.productId },
-                //         update: { $inc: { stockLeft: -product.quantity } }
 
-                //     }
-                // }))
-                const variantStockUpdates = updatedOrder.products.filter(product => product.productVariantId)
+                const cart = await cartModel.findById(updatedOrder.CartId).populate('products.productVariantId');
+
+
+                const variantStockUpdates = cart.products
+                    .filter(product => product.productVariantId)
                     .map(product => ({
                         updateOne: {
                             filter: { _id: product.productVariantId },
                             update: { $inc: { stockLeft: -product.quantity } }
                         }
-                    }))
-
-                // if (productStockUpdates.length) {
-                //     await Product.bulkWrite(productStockUpdates)
-                // }
+                    }));
+                console.log("variantStockUpdates", variantStockUpdates)
                 if (variantStockUpdates.length) {
-                    await ProductVariant.bulkWrite(variantStockUpdates)
+                    await ProductVariant.bulkWrite(variantStockUpdates);
                 }
+
                 const finalOrder = await OrderModel.findByIdAndUpdate(
                     updatedOrder._id,
                     {
@@ -356,7 +353,7 @@ export class PaymentController {
                     { new: true }
                 );
                 if (updatedOrder.paymentStatus === 'paid' && updatedOrder.orderStatus !== 'cancelled') {
-
+                    console.log("updatedOrder.storeId", updatedOrder.storeId)
                     await payoutQueue.add(
                         'processPayout',
                         {
@@ -383,7 +380,7 @@ export class PaymentController {
                 }
 
                 if (updatedOrder.paymentStatus === 'paid') {
-                    for (const product of updatedOrder.products) {
+                    for (const product of cart.products) {
                         const trackingNumber = this.generateTrackingNumber();
                         console.log("trackingNumber", trackingNumber)
 
@@ -394,6 +391,7 @@ export class PaymentController {
                             shippingAddress: updatedOrder.shippingAddress,
                             storeId: updatedOrder.storeId,
                             orderId: updatedOrder._id,
+                            cartId: cart._id
                         }, {
                             delay: 1 * 60 * 1000,
                             attempts: 3,
@@ -419,14 +417,14 @@ export class PaymentController {
                 console.log("==== Error in handlePayment Function =====")
                 if (Payout) {
                     await PayoutModel.findByIdAndUpdate(
-                        Payout[0]._id,
+                        Payout._id,
                         {
                             status: 'failed',
                             error: error.message?.substring(0, 500)
                         }
                     );
                     await OrderModel.findByIdAndUpdate(
-                        { orderId: updatedOrder._id },
+                        updatedOrder._id,
                         { orderStatus: 'cancelled', paymentStatus: 'unpaid', payoutStatus: 'failed' },
                         { new: true }
                     )
@@ -541,7 +539,7 @@ export class PaymentController {
                 .populate('products.productId')
                 .populate('products.productVariantId');
 
-
+            const cart = await cartModel.findOne({ _id: order.CartId })
             console.log("handleRefundEvent function Order", order)
 
             const eligibleProductsNote = refund.notes?.eligibleProducts || '';
@@ -551,25 +549,23 @@ export class PaymentController {
             console.log("refund.notes", refund.notes)
             console.log("eligibleProductIds", eligibleProductIds)
 
+
             if (refund.status === 'processed') {
-                await OrderModel.updateOne(
-                    { _id: order._id },
+                await cartModel.updateOne(
+                    { _id: order.CartId, 'products.productId': { $in: eligibleProductIds } },
                     {
                         $set: {
-                            'products.$[elem].refundStatus': 'processed'
+                            'products.$[elem].refundStatus': 'processed',
                         }
                     },
                     {
-                        arrayFilters: [
-                            { 'elem.productId': { $in: eligibleProductIds.map(id => new mongoose.Types.ObjectId(id)) } }
-                        ],
-                        new: true
+                        arrayFilters: [{ 'elem.productId': { $in: eligibleProductIds.map(id => new mongoose.Types.ObjectId(id)) } }]
                     }
-                )
-                console.log("Change in products in product refund Status")
-
+                );
+                console.log("Updated Cart products' refund status to 'processed'.");
             }
-            const stockUpdates = order.products.
+
+            const stockUpdates = cart.products.
                 filter(product => eligibleProductIds.includes(product.productId.toString()))
                 .flatMap(product => [
                     {

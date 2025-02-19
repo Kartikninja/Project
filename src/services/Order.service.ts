@@ -20,6 +20,8 @@ import { SubscriptionModel } from '@/models/Subscription.model';
 import { v4 as uuidv4 } from 'uuid'
 import { Queue } from 'bullmq';
 import { REDIS_HOST, REDIS_PORT } from '@/config';
+import { cartModel } from '@/models/cart.model';
+import { AddressModel } from '@/models/Address.model';
 
 
 @Service()
@@ -27,137 +29,28 @@ class OrderService {
 
     private payment = Container.get(PaymentService)
     private notification = Container.get(NotificationService)
+
     private razorpayService = Container.get(RazorpayService)
 
-    public async createOrder(userId: string, orderData: any): Promise<any> {
-        const { storeId, products, shippingAddress, discountCode } = orderData;
 
-        console.log("orderData", orderData)
+
+
+    public async createOrder(userId: string, cartId: string): Promise<any> {
+        const cart = await cartModel.findOne({ userId: userId, _id: cartId });
+        if (!cart) throw new HttpException(404, 'Cart not found');
+
+        const { storeId, products, totalPrice } = cart;
+        const cart1 = await cartModel.findOne({ userId: userId, _id: cartId }).populate('products.productId').populate('products.productVariantId');
+
         const store = await StoreModel.findOne({ _id: storeId, isActive: true, status: 'approved' });
         if (!store) throw new HttpException(404, 'This Store is not found');
 
         const user = await UserModel.findOne({ _id: userId, isVerified: true });
         if (!user) throw new HttpException(404, 'User not found or not verified');
 
+        const shippingAddress = await AddressModel.findOne({ userId: userId })
+
         try {
-            let totalPrice = 0;
-            const createOrder = []
-
-            const calculateDiscountedPrice = async (discountCode: string, productId: string, variantId: string, quantity: number, currentPrice: number):
-                Promise<{ finalPrice: number; discountAmount: number; discountType: 'percentage' | 'fixed' | 'none' }> => {
-
-
-                let finalPrice = currentPrice * quantity
-                let discountAmount = 0;
-
-                let discountType: 'percentage' | 'fixed' | 'none' = 'none';
-
-                if (discountCode) {
-                    const discount = await DiscountModel.findOne({
-                        code: discountCode,
-                        isActive: true,
-                        $or: [
-                            { start_date: { $lte: new Date() }, end_date: { $gte: new Date() } },
-                            { start_date: null, end_date: null }
-                        ]
-                    })
-                    const currentDate = new Date()
-                    if (discount) {
-                        const itemAmount = currentPrice
-                        let itemDiscount = 0
-                        const isWithinDateRange = discount.start_date && discount.end_date ?
-                            currentDate >= discount.start_date && currentDate <= discount.end_date : true;
-                        if (isWithinDateRange) {
-                            if (discount.unit === null || quantity >= discount.unit) {
-                                if (discount.discount_type === Discount_TYPE.PERCENTAGE) {
-                                    itemDiscount = (itemAmount * discount.value) / 100
-                                    discountType = 'percentage';
-                                } else {
-                                    itemDiscount = discount.value
-                                    discountType = 'fixed';
-                                }
-                                discountAmount = itemAmount * quantity
-                            }
-                            finalPrice = (itemAmount - itemDiscount) * quantity
-                        }
-                    } else {
-                        console.log("No valid discount code found.");
-
-                    }
-                } else {
-                    const cartItem = [{
-                        Product_id: productId,
-                        quantity: quantity,
-                        variant: { price: currentPrice },
-                        discountCode: discountCode
-                    }]
-                    console.log("No Discount Code Provided. Using getApplicableDiscount for product discount.");
-
-                    const appliedDiscount = await this.getApplicableDiscount(cartItem);
-                    if (appliedDiscount) {
-                        console.log("appliedDiscount", appliedDiscount)
-                        discountAmount = appliedDiscount.discountAmount;
-                        discountType = appliedDiscount.discount_type as 'percentage' | 'fixed' | 'none';
-                        finalPrice = (currentPrice * quantity) - appliedDiscount.discountAmount;
-                    }
-                    console.log(`This ${productId} has  discount  ${discountAmount} and this is finalPrice : ${finalPrice}`)
-                    console.log(`getApplicableDiscount=>This product ${productId} has discountType is ${discountType}`)
-                }
-
-                return { finalPrice, discountAmount, discountType }
-
-
-            }
-            for (const product of products) {
-                const { productId, productVariantId, quantity } = product;
-
-
-                const productData = await ProductVariant.findById(productVariantId).populate('productId');;
-                if (!productData) throw new HttpException(404, 'This Product Varinat  is not found');
-                if (productData.stockLeft <= 0) throw new HttpException(404, `${productData.variantName} is not avalible for this time`)
-                const productVariant = await ProductVariant.findOne({ _id: productVariantId, productId });
-                if (!productVariant) throw new HttpException(404, 'This Product Variant is not found');
-                if (productVariant.stockLeft <= 0) throw new HttpException(404, `this ${productVariant._id} is not avalible for this time `)
-
-                const subCategoriesId = await Product.findById(productData.productId)
-
-
-                const subCategory = await SubCategory.findById(subCategoriesId.subCategoryId);
-                const variantPrice = productVariant.price || 0;
-
-
-
-
-                const { finalPrice, discountAmount, discountType } = await calculateDiscountedPrice(discountCode, productId, productVariantId.toString(), quantity, variantPrice);
-                totalPrice += finalPrice
-                console.log(`calculateDiscountedPrice=>   totalPrice  ${totalPrice} and discountedPrice ${discountAmount}`)
-
-                console.log(`calculateDiscountedPrice=>This is product ${productId} DiscountType has ${discountType}`)
-
-                createOrder.push({
-                    productId,
-                    productVariantId,
-                    quantity,
-                    finalPrice: finalPrice,
-                    refundPolicy: subCategoriesId.refundPolicy,
-                    replacementPolicy: subCategoriesId.replacementPolicy,
-
-                    discountedPrice: finalPrice,
-                    discountAmount: discountAmount,
-                    discountType: discountType,
-
-                });
-
-                console.log(`Discounted price for product ${productId}: ${finalPrice}`);
-
-
-            }
-            console.log(`totalPrice ${totalPrice} `)
-
-            const { finalPrice, SubScriptiondiscountAmount } = await this.discountForSubscription(totalPrice, userId);
-            totalPrice = finalPrice;
-
-            console.log(`discountForSubscription=>totalPrice ${totalPrice} and finalPrice ${finalPrice}`)
 
             const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order');
             console.log('payment', payment);
@@ -167,13 +60,13 @@ class OrderService {
                 order_Id,
                 userId,
                 storeId,
-                products: createOrder,
+                CartId: cartId,
                 totalPrice,
                 shippingAddress,
                 orderStatus: 'pending',
                 paymentStatus: 'unpaid',
                 orderId: payment.orderId,
-                subScriptionDiscount: SubScriptiondiscountAmount
+
 
             });
 
@@ -190,44 +83,18 @@ class OrderService {
             })
 
 
-            const populatedProducts = await Promise.all(
-                createOrder.map(async (product) => {
-                    const productData = await Product.findById(product.productId);
-                    if (!productData) throw new HttpException(404, 'Product not found');
-
-                    const productVariant = await ProductVariant.findOne({
-                        _id: product.productVariantId,
-                        productId: product.productId,
-                    });
-                    if (!productVariant) throw new HttpException(404, 'Product Variant not found');
-
-                    return {
-                        ...product,
-                        ProductName: productData.name || 'Unknown Product',
-                        variantName: productVariant.variantName,
-                        price: productVariant.price,
-                        imageUrl: productVariant.images || productData.images || 'default-image-url.jpg',
-
-                    };
-                })
-            );
-
-
-
-
-
-
-
             const emailDetails = {
                 orderDate: new Date(),
                 customerName: user.fullName || 'Valued Customer',
                 email: user.email,
-                products: populatedProducts.map(product => ({
-                    productName: product.ProductName,
-                    productImage: product.imageUrl,
-                    variantName: product.variantName,
-                    price: product.finalPrice,
-                    quantity: product.quantity
+
+                products: cart1?.products?.map(product => ({
+                    productName: product.productId?.name || 'Unknown Product',
+                    productImage: product.productVariantId?.images || product.productId.images || 'default-image-url.jpg',
+                    variantName: product.productVariantId?.variantName || 'Unknown Variant',
+                    price: product.price,
+                    quantity: product.quantity,
+                    finalPrice: product.finalPrice,
                 })),
 
                 orderId: payment.orderId,
@@ -314,18 +181,30 @@ class OrderService {
             if (order.orderStatus === 'cancelled') {
                 throw new HttpException(400, 'Order already cancelled');
             }
-            const user = await UserModel.findOne({ _id: userId })
 
+            const user = await UserModel.findOne({ _id: userId })
+            const cartItems = await cartModel.findOne({ _id: order.CartId })
+                .populate({
+                    path: 'products.productId',
+                    model: 'Product'
+                })
+                .populate({
+                    path: 'products.productVariantId',
+                    model: 'ProductVariant'
+                });
+
+            if (!cartItems) {
+                throw new HttpException(404, 'Cart not found')
+            }
             let refundAmount = 0;
             const eligibleProducts: any[] = [];
             const now = new Date();
             if ((order.orderStatus === 'pending' && order.paymentStatus === 'paid') || order.orderStatus === 'confirmed') {
                 refundAmount = order.totalPrice;
-                eligibleProducts.push(...order.products);
+                eligibleProducts.push(...cartItems.products);
             }
             else if (['shipped', 'out_for_delivery', 'delivered'].includes(order.orderStatus)) {
-                console.log("order.orderStatus", order.orderStatus)
-                for (const product of order.products) {
+                for (const product of cartItems.products) {
                     const { shippingStatus, refundPolicy, deliveredAt, productId, discountedPrice } = product;
 
                     console.log("product", product)
@@ -333,7 +212,6 @@ class OrderService {
                     if (shippingStatus === 'delivered' || shippingStatus === 'shipped' || shippingStatus === 'out_for_delivery') {
                         if (deliveredAt && this.isEligibleForRefund(refundPolicy, new Date(deliveredAt))) {
                             isEligible = true
-                            console.log("isEligible", isEligible)
                         }
                     } else {
                         isEligible = true
@@ -341,30 +219,34 @@ class OrderService {
                     if (isEligible) {
                         refundAmount += discountedPrice
                         eligibleProducts.push(productId.toString())
-                        console.log(`This Product ${product.productId} has refund Amount is :${refundAmount}`)
                     }
 
                 }
             } else {
                 throw new HttpException(400, 'Order cannot be cancelled in its current status');
             }
-            console.log("refundAmount", refundAmount)
+
 
             if (refundAmount <= 0) {
                 throw new HttpException(400, 'No eligible products for refund');
             }
+            const notesContent = {
+                reason: cancellationReason || 'No reason provided',
+                cancelledBy: userId.toString(),
+                eligibleProducts: eligibleProducts.join(', ')
+            };
 
-            console.log(`Total Refund Amount is :${refundAmount}`)
+            if (notesContent.eligibleProducts.length > 512) {
+                notesContent.eligibleProducts = notesContent.eligibleProducts.substring(0, 512);
+            }
             const refund = await razorpayInstance.payments.refund(order.paymentId, {
                 amount: Math.round(refundAmount * 100),
                 speed: 'normal',
-                notes: {
-                    reason: cancellationReason || 'No reason provided',
-                    cancelledBy: userId.toString(),
-                    eligibleProducts: eligibleProducts.join(', ')
-                }
+
+                notes: notesContent
+
             });
-            console.log('refund', refund)
+
 
             const updateData: any = {
                 orderStatus: 'cancelled',
@@ -381,14 +263,14 @@ class OrderService {
                 }
             };
 
-            updateData.products = order.products.map(p => {
-                const isEligible = eligibleProducts.some(ep => ep.toString() === p.productId.toString());
-                return {
-                    ...p,
-                    refundStatus: isEligible ? 'requested' : 'rejected',
-                    cancellationStatus: isEligible ? 'approved' : 'rejected'
-                };
-            });
+
+            const updateCart = cartItems.products.map(p => ({
+                productId: p.productId._id,
+                refundStatus: eligibleProducts.includes(p.productId.toString())
+                    ? 'requested'
+                    : 'rejected',
+            }));
+
 
             await this.notification.sendNotification({
                 modelName: 'Order',
@@ -399,6 +281,18 @@ class OrderService {
                 orderId: order._id.toString()
             })
             const updatedOrder = await OrderModel.findByIdAndUpdate(id, updateData, { new: true });
+
+            await cartModel.findByIdAndUpdate(
+                order.CartId,
+                {
+                    $set: {
+                        products: updateCart
+                    }
+                },
+                { new: true }
+            );
+
+
             const emailDetails = {
                 orderDate: order.createdAt,
                 customerName: user.fullName || 'Valued Customer',
@@ -408,10 +302,10 @@ class OrderService {
                 refundAmount,
                 subject: 'Your Order Has Been Cancelled',
                 mailTitle: 'Order Cancellation Confirmation',
-                products: order.products.map((product: any) => ({
-                    productName: product.productId.ProductName,
-                    productImage: product.productId.imageUrl,
-                    variantName: product.variantName,
+                products: cartItems.products.map((product) => ({
+                    productName: product.productId.name,
+                    productImage: product.productId.images,
+                    variantName: product.productVariantId.variantName,
                     price: product.discountedPrice,
                     quantity: product.quantity
                 }))
@@ -477,11 +371,12 @@ class OrderService {
 
     public async deleteOrder(orderId: string, userId: string): Promise<void> {
         const result = await OrderModel.findByIdAndDelete(orderId);
+        const cart = await cartModel.findOne({ userId: userId, _id: result.CartId }).populate('products.productId').populate('products.productVariantId');
         await this.notification.sendNotification({
             modelName: 'Order',
             type: 'Order-delete',
             userId: result.userId.toString(),
-            storeId: result.storeId.toString(), 
+            storeId: result.storeId.toString(),
             createdBy: 'User',
             orderId: result._id.toString()
         })
@@ -494,10 +389,10 @@ class OrderService {
             orderId: orderId,
             subject: 'Your Order Has Been Deleted',
             mailTitle: 'Order Deletion Confirmation',
-            products: result.products.map((product: any) => ({
-                productName: product.productId.ProductName,
-                productImage: product.productId.imageUrl,
-                variantName: product.variantName,
+            products: cart.products.map((product: any) => ({
+                productName: product.productId.name,
+                productImage: product.productId.images,
+                variantName: product.productVariantId.variantName,
                 price: product.discountedPrice,
                 quantity: product.quantity
             }))
@@ -740,8 +635,13 @@ class OrderService {
         }
 
         console.log("Current Order Details:", order);
+        const cart = await cartModel.findOne({ userId, _id: order.CartId }).populate('products.productId').populate('products.productVariantId');
 
-        const currentProductVariantIds = order.products.map((p) => p.productVariantId);
+        if (!cart) throw new HttpException(404, 'Cart not found for this order');
+
+
+
+        const currentProductVariantIds = cart.products.map((p) => p.productVariantId);
         const productVariants = await ProductVariant.find({
             _id: { $in: currentProductVariantIds },
         });
@@ -816,7 +716,7 @@ class OrderService {
         };
 
 
-        for (let currentProduct of order.products) {
+        for (let currentProduct of cart.products) {
             const variantId = currentProduct.productVariantId.toString();
             const currentPrice = currentPriceMap[variantId] || 0;
 
@@ -861,7 +761,7 @@ class OrderService {
         for (let newProduct of updatedProducts) {
             const { productVariantId, quantity } = newProduct;
 
-            if (!order.products.some((p) => p.productVariantId.toString() === productVariantId.toString())) {
+            if (!cart.products.some((p) => p.productVariantId.toString() === productVariantId.toString())) {
                 const variant = await ProductVariant.findById(productVariantId);
                 if (!variant) throw new HttpException(404, `ProductVariant not found for ID: ${productVariantId}`);
 
@@ -895,7 +795,7 @@ class OrderService {
         const storeId = order.storeId
         const UpdatedOrderId = `UPDATE-ORD-${new Date().getTime()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
         const payment = await this.payment.createRazorpayOrder(totalPrice, userId, 'razorpay', 'Order')
-        order.products = updatedOrderProducts;
+        cart.products = updatedOrderProducts;
         order.totalPrice = Math.max(totalPrice, 0);
         order.order_Id = UpdatedOrderId
         order.orderId = payment.orderId
@@ -914,37 +814,8 @@ class OrderService {
             createdBy: 'User',
             orderId: order._id.toString()
         })
-        const populatedProducts = await Promise.all(
-            updatedProducts.map(async (product) => {
-                console.log('Product:', product);
-                if (!product || !product.productId || !product.productVariantId) {
-                    throw new HttpException(400, 'Invalid product or missing productId/productVariantId');
-                }
 
-                try {
-                    const productData = await Product.findById(product.productId).lean();
-                    if (!productData) throw new HttpException(404, 'Product Not found');
-                    const productVariant = await ProductVariant.findOne({
-                        _id: product.productVariantId,
-                        productId: product.productId
-                    }).lean();
-                    if (!productVariant) throw new HttpException(404, 'Product Variant not found');
-                    console.log('Fetched Product Variant:', productVariant);
-                    const finalPrice = productVariant.price
-                    console.log("finalPrice", finalPrice)
-                    return {
-                        ...product,
-                        name: productData.name || 'Unknown Product',
-                        varinatName: productVariant.variantName,
-                        imageUrl: productVariant.images || productData.images || 'default-image-url.jpg',
-                        finalPrice: finalPrice * product.quantity || 0,
-                    };
-                } catch (error) {
-                    console.error('Error fetching product/variant:', error.message);
-                    throw error;
-                }
-            })
-        );
+
 
 
 
@@ -952,12 +823,13 @@ class OrderService {
             orderDate: new Date(),
             customerName: user.fullName || 'Valued Customer',
             email: user.email,
-            products: populatedProducts.map(product => ({
-                productName: product.name,
-                productImage: product.imageUrl,
-                price: product.finalPrice,
+            products: cart.products.map(product => ({
+                productName: product.productId?.name || 'Unknown Product',
+                productImage: product.productVariantId?.images || product.productId.images || 'default-image-url.jpg',
+                variantName: product.productVariantId?.variantName || 'Unknown Variant',
+                price: product.price,
                 quantity: product.quantity,
-                varinatName: product.variantName
+                finalPrice: product.finalPrice,
             })),
             orderId: order.orderId,
             subject: 'Your Updated Purchase Details',
@@ -991,6 +863,8 @@ class OrderService {
 
         const store = await StoreModel.findById(order.storeId);
         const user = await UserModel.findById(order.userId);
+
+
 
         if (user && store) {
             await this.notification.sendNotification({

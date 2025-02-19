@@ -11,6 +11,7 @@ import { Product } from '@/models/Product.model';
 import { StoreModel } from '@/models/Store.model';
 import axios from 'axios';
 import { UserModel } from '@/models/users.model';
+import { cartModel } from '@/models/cart.model';
 
 const razorpayX = new Razorpay({
     key_id: "rzp_test_kghAwVX1ISLmoi",
@@ -25,6 +26,7 @@ export function initializePayoutWorker() {
     const worker = new Worker('payouts', async job => {
         const { payoutId, amount, fundAccountId, storeData } = job.data;
         const payoutService = Container.get(PayoutService);
+        console.log("job.data", job.data)
 
         try {
             const payoutRecord = await PayoutModel.findById(payoutId);
@@ -103,32 +105,29 @@ export function initializePayoutWorker() {
 export function initializeShippingWorker() {
     const worker = new Worker('shipping', async (job) => {
         try {
-            const { orderId, productId, trackingNumber, storeId } = job.data;
-
+            const { orderId, productId, trackingNumber, cartId, storeId } = job.data;
+            console.log("orderId:", orderId);
+            console.log("cartId:", cartId);
+            console.log("productId:", productId);
+            console.log("storeId:", storeId);
             console.log("Call initializeShippingWorker")
-            const order = await OrderModel.findById(orderId);
-            const product = await Product.findById(productId);
-            const store = await StoreModel.findById(order.storeId);
-            const storeOwner = store ? store.fullName : 'Store Owner Name'
-            // console.log(`this is order ${order} this is product ${product} this is store ${store} and this is `)
-            if (!order || !product || !store || !storeOwner) {
-                throw new Error("Required data not found");
-            }
+            const store = await StoreModel.findById(storeId);
 
-            // Handle different job types
+
+
             switch (job.name) {
                 case 'processShipping':
-                    await handleShippedStatus(orderId, productId, trackingNumber, store);
-                    await scheduleNextJob('processOutForDelivery', orderId, productId, trackingNumber, 2 * 60 * 1000);
+                    await handleShippedStatus(cartId, productId, trackingNumber, store, orderId);
+                    await scheduleNextJob('processOutForDelivery', cartId, productId, trackingNumber, 2 * 60 * 1000, orderId);
                     break;
 
                 case 'processOutForDelivery':
-                    await handleOutForDeliveryStatus(orderId, productId, trackingNumber);
-                    await scheduleNextJob('processDelivered', orderId, productId, trackingNumber, 3 * 60 * 1000);
+                    await handleOutForDeliveryStatus(cartId, productId, trackingNumber, orderId);
+                    await scheduleNextJob('processDelivered', cartId, productId, trackingNumber, 3 * 60 * 1000, orderId);
                     break;
 
                 case 'processDelivered':
-                    await handleDeliveredStatus(orderId, productId, trackingNumber);
+                    await handleDeliveredStatus(cartId, productId, trackingNumber, orderId);
                     break;
             }
         } catch (error) {
@@ -154,8 +153,8 @@ export function initializeShippingWorker() {
 }
 
 
-async function handleShippedStatus(orderId: string, productId: string, trackingNumber: string, store: any) {
-    await OrderModel.findByIdAndUpdate(orderId, {
+async function handleShippedStatus(cartId: string, productId: string, trackingNumber: string, store: any, orderId: string) {
+    await cartModel.findByIdAndUpdate(cartId, {
         $set: {
             'products.$[elem].shippingStatus': 'shipped',
             'products.$[elem].trackingNumber': trackingNumber,
@@ -164,45 +163,47 @@ async function handleShippedStatus(orderId: string, productId: string, trackingN
             'products.$[elem].deliveryAgentPhone': store.mobile,
             'products.$[elem].estimatedDelivery': new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
         },
-        orderStatus: 'shipped'
 
     }
 
         , { arrayFilters: [{ 'elem.productId': productId }] });
     console.log("handleShippedStatus")
+    await OrderModel.findByIdAndUpdate(orderId, { orderStatus: 'shipped' }, { new: true })
 }
 
-async function handleOutForDeliveryStatus(orderId: string, productId: string, trackingNumber: string) {
-    await OrderModel.findByIdAndUpdate(orderId, {
+async function handleOutForDeliveryStatus(cartId: string, productId: string, trackingNumber: string, orderId: string) {
+    await cartModel.findByIdAndUpdate(cartId, {
         $set: {
             'products.$[elem].shippingStatus': 'out_for_delivery',
             'products.$[elem].trackingNumber': trackingNumber
         },
-        orderStatus: 'out_for_delivery'
     }, { arrayFilters: [{ 'elem.productId': productId }] });
+    await OrderModel.findByIdAndUpdate(orderId, { orderStatus: 'out_for_delivery' }, { new: true })
+
     console.log("handleOutForDeliveryStatus");
 }
 
-async function handleDeliveredStatus(orderId: string, productId: string, trackingNumber: string) {
-    await OrderModel.findByIdAndUpdate(orderId, {
+async function handleDeliveredStatus(cartId: string, productId: string, trackingNumber: string, orderId: string) {
+    await cartModel.findByIdAndUpdate(cartId, {
         $set: {
             'products.$[elem].shippingStatus': 'delivered',
             'products.$[elem].deliveredAt': new Date(),
             'products.$[elem].trackingNumber': trackingNumber
         },
-        orderStatus: 'delivered'
     }, { arrayFilters: [{ 'elem.productId': productId }] });
+    await OrderModel.findByIdAndUpdate(orderId, { orderStatus: 'delivered' }, { new: true })
+
     console.log("handleDeliveredStatus")
 }
 
-async function scheduleNextJob(jobName: string, orderId: string, productId: string, trackingNumber: string, delay: number) {
+async function scheduleNextJob(jobName: string, cartId: string, productId: string, trackingNumber: string, delay: number, orderId: string) {
     const shippingQueue = new Queue('shipping', {
         connection: {
             host: REDIS_HOST,
             port: Number(REDIS_PORT),
         }
     });
-    await shippingQueue.add(jobName, { orderId, productId, trackingNumber }, { delay });
+    await shippingQueue.add(jobName, { cartId, productId, trackingNumber, orderId }, { delay });
     console.log("scheduleNextJob")
 }
 
